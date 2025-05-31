@@ -1,0 +1,15 @@
+[
+  {
+    "port": 443,
+    "ps": "示例-VMess",
+    "tls": "tls",
+    "id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "aid": 0,
+    "v": 2,
+    "host": "your.domain.com",
+    "type": "none",
+    "path": "/path",
+    "net": "ws",
+    "add": "your.domain.com"
+  }
+]

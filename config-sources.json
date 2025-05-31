@@ -1,0 +1,10 @@
+{
+  "sources": [
+    {
+      "name": "示例分流",
+      "protocol": "clash",
+      "url": "https://example.com/rules.yaml",
+      "filename": "rules.yaml"
+    }
+  ]
+}
