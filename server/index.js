@@ -12,8 +12,11 @@ require('dotenv').config({ path: envPath });
 // --- End Dotenv Configuration ---
 
 const basicAuth = require('express-basic-auth');
-const { Octokit } = require('@octokit/rest'); // For GitHub API interactions
+// const { Octokit } = require('@octokit/rest'); // For GitHub API interactions (No longer used for file commits)
 const crypto = require('crypto'); // For key generation if needed, not for secret encryption here
+const { exec: execCallback } = require('child_process');
+const util = require('util');
+const exec = util.promisify(execCallback);
 
 // Attempt to load libsodium-wrappers for GitHub secret encryption
 let sodium;
@@ -33,18 +36,18 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password'; // CHANGE THIS!
 
 const users = { [ADMIN_USERNAME]: ADMIN_PASSWORD };
 
-const GITHUB_TOKEN = process.env.GH_PAT; 
-const GITHUB_OWNER = process.env.GITHUB_OWNER; 
-const GITHUB_REPO = process.env.GITHUB_REPO; 
+// const GITHUB_TOKEN = process.env.GH_PAT; 
+// const GITHUB_OWNER = process.env.GITHUB_OWNER; 
+// const GITHUB_REPO = process.env.GITHUB_REPO; 
 
-let octokitInstance;
-if (GITHUB_TOKEN) {
-  octokitInstance = new Octokit({ auth: GITHUB_TOKEN });
-} else {
-  console.warn(
-    'GH_PAT environment variable is not set. GitHub integration will be limited.'
-  );
-}
+// let octokitInstance;
+// if (GITHUB_TOKEN) {
+//   octokitInstance = new Octokit({ auth: GITHUB_TOKEN });
+// } else {
+//   console.warn(
+//     'GH_PAT, GITHUB_OWNER, GITHUB_REPO env vars are not set. GitHub file commit integration is disabled.'
+//   );
+// }
 
 const RULE_SOURCES_PATH = path.join(__dirname, '..', 'config', 'rule-sources.json');
 const SERVERS_JSON_PATH = path.join(__dirname, '..', 'config', 'servers.json'); 
@@ -64,41 +67,11 @@ const protectRoute = basicAuth({
   realm: 'AdminArea',
 });
 
-// --- Helper: Commit file to GitHub ---
-async function commitFileToGitHub(filePath, commitMessage, fileContent) {
-  if (!octokitInstance || !GITHUB_OWNER || !GITHUB_REPO) {
-    throw new Error('GitHub client or repository details not configured for committing file.');
-  }
-  const relativePath = path.relative(path.join(__dirname, '..'), filePath);
-  let sha;
-  try {
-    const { data } = await octokitInstance.repos.getContent({
-      owner: GITHUB_OWNER,
-      repo: GITHUB_REPO,
-      path: relativePath,
-    });
-    sha = data.sha;
-  } catch (error) {
-    if (error.status !== 404) throw error; // Rethrow if not a 'file not found' error
-    // If file doesn't exist, sha remains undefined, and createOrUpdateFileContent will create it
-  }
-
-  await octokitInstance.repos.createOrUpdateFileContents({
-    owner: GITHUB_OWNER,
-    repo: GITHUB_REPO,
-    path: relativePath,
-    message: commitMessage,
-    content: Buffer.from(fileContent).toString('base64'),
-    sha: sha, // Include SHA if updating an existing file
-  });
-  console.log(`Successfully committed '${relativePath}' to GitHub.`);
-}
-
 // --- API Endpoints ---
 app.get('/api/status', (req, res) => {
   res.json({ 
     message: 'Server is running',
-    githubIntegration: !!(octokitInstance && GITHUB_OWNER && GITHUB_REPO),
+    githubIntegration: false, // GitHub file commit integration is now removed
     adminUser: ADMIN_USERNAME 
   });
 });
@@ -122,12 +95,7 @@ app.post('/api/rule-sources', protectRoute, async (req, res) => {
     const newContent = JSON.stringify(newRuleSources, null, 2);
     await fs.writeFile(RULE_SOURCES_PATH, newContent, 'utf8');
     
-    if (octokitInstance && GITHUB_OWNER && GITHUB_REPO) {
-      await commitFileToGitHub(RULE_SOURCES_PATH, 'feat: Update rule sources via API', newContent);
-      res.json({ message: 'Rule sources updated and committed to GitHub.' });
-    } else {
-      res.json({ message: 'Rule sources updated locally. GitHub commit skipped (integration not configured).' });
-    }
+    res.json({ message: 'Rule sources updated locally.' });
   } catch (error) {
     console.error('Error writing or committing rule-sources.json:', error);
     res.status(500).json({ error: 'Failed to update rule sources.' });
@@ -166,31 +134,39 @@ app.post('/api/servers', protectRoute, async (req, res) => {
 });
 
 app.post('/api/trigger-generation', protectRoute, async (req, res) => {
-  if (!octokitInstance || !GITHUB_OWNER || !GITHUB_REPO) {
-    return res.status(503).json({ error: 'GitHub integration not configured.' });
-  }
-  try {
-    // Check if package.json exists in the server directory to determine workflow file name
-    let workflowFileName = 'main.yml'; // Default
-    try {
-        await fs.access(SERVER_PACKAGE_JSON_PATH);
-        // If package.json exists, it implies node environment, stick to main.yml or a specific node workflow file
-    } catch (e) {
-        // If no package.json, maybe it's a different kind of project setup
-        // This logic might need adjustment based on actual workflow file names
-    }
+  const projectRoot = path.resolve(__dirname, '..');
+  const generateScriptPath = path.join(projectRoot, 'server', 'generateConfig.js'); // Assuming script is server/generateConfig.js
 
-    console.log(`Attempting to trigger workflow: ${workflowFileName}`);
-    await octokitInstance.actions.createWorkflowDispatch({
-      owner: GITHUB_OWNER,
-      repo: GITHUB_REPO,
-      workflow_id: workflowFileName, 
-      ref: process.env.GITHUB_REF || 'main', // Default to 'main', or use current branch if available
-    });
-    res.json({ message: 'Workflow dispatch triggered successfully.' });
+  try {
+    console.log('Step 1: Fetching and processing remote rule sets...');
+    // Command to fetch/process rules. Adjust script name and arguments as needed.
+    const { stdout: rulesStdout, stderr: rulesStderr } = await exec(`node "${generateScriptPath}" --rules-only`, { cwd: projectRoot });
+    if (rulesStderr) {
+      console.warn(`Rule generation script stderr (step 1): ${rulesStderr}`);
+    }
+    console.log(`Rule generation script stdout (step 1): ${rulesStdout}`);
+    console.log('Step 1 completed.');
+
+    console.log('Step 2: Generating final config.yaml...');
+    // Command to generate final config. Adjust script name and arguments as needed.
+    // This might use a flag like --processed_rules_file ./output/generated_rules.txt or similar if your script requires it.
+    const { stdout: finalStdout, stderr: finalStderr } = await exec(`node "${generateScriptPath}"`, { cwd: projectRoot });
+    if (finalStderr) {
+      console.warn(`Config generation script stderr (step 2): ${finalStderr}`);
+    }
+    console.log(`Config generation script stdout (step 2): ${finalStdout}`);
+    console.log('Step 2 completed. Final config.yaml should be generated.');
+
+    res.json({ message: 'Local rule fetching and config generation process completed successfully.' });
+
   } catch (error) {
-    console.error('Error triggering workflow dispatch:', error);
-    res.status(500).json({ error: 'Failed to trigger workflow dispatch.' });
+    console.error('Error during local config generation process:', error);
+    res.status(500).json({ 
+      error: 'Failed to complete local config generation process.', 
+      details: error.message,
+      stdout: error.stdout,
+      stderr: error.stderr
+    });
   }
 });
 
@@ -214,13 +190,7 @@ app.post('/api/config/save', protectRoute, async (req, res) => {
     }
     try {
         await fs.writeFile(OUTPUT_CONFIG_PATH, content, 'utf8');
-        // Optionally commit this manual override to GitHub
-        if (octokitInstance && GITHUB_OWNER && GITHUB_REPO) {
-            await commitFileToGitHub(OUTPUT_CONFIG_PATH, 'feat: Manually update and save config.yaml via API', content);
-            res.json({ message: 'Config.yaml saved and committed to GitHub.' });
-        } else {
-            res.json({ message: 'Config.yaml saved locally. GitHub commit skipped.' });
-        }
+        res.json({ message: 'Config.yaml saved locally.' });
     } catch (error) {
         console.error('Error saving or committing config.yaml:', error);
         res.status(500).json({ error: 'Failed to save config.yaml.' });
@@ -235,9 +205,6 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`Admin UI: http://localhost:${PORT}`);
   console.log(`Credentials: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD} (Ensure these are changed and secured, preferably via ENV variables)`);
-  if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
-    console.warn('Set GH_PAT, GITHUB_OWNER, GITHUB_REPO env vars for full GitHub integration.');
-  }
   // if (!sodium) { // No longer needed for servers.json
     // console.warn('For secure GitHub secret updates for servers.json, please install libsodium-wrappers: npm install libsodium-wrappers');
   // }

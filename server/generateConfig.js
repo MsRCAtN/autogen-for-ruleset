@@ -1,225 +1,184 @@
-// server/generateConfig.js
-const fs = require('fs');
+#!/usr/bin/env node
+
+const fs = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
 const yaml = require('js-yaml');
 const { program } = require('commander');
 
-// --- Helper Functions ---
-async function fetchRemoteRules(url) {
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+const CONFIG_DIR = path.join(PROJECT_ROOT, 'config');
+const OUTPUT_DIR = path.join(PROJECT_ROOT, 'output');
+
+const SERVERS_JSON_PATH = path.join(CONFIG_DIR, 'servers.json');
+const RULE_SOURCES_JSON_PATH = path.join(CONFIG_DIR, 'rule-sources.json');
+const GENERATED_RULES_TXT_PATH = path.join(OUTPUT_DIR, 'generated_rules.txt');
+const OUTPUT_CONFIG_YAML_PATH = path.join(OUTPUT_DIR, 'config.yaml');
+
+// Helper function to ensure a directory exists
+async function ensureDirectoryExists(dirPath) {
   try {
-    const response = await axios.get(url, { timeout: 15000 });
-    return response.data.split(/\r?\n/).filter(line => line.trim() && !line.startsWith('#'));
+    await fs.access(dirPath);
   } catch (error) {
-    console.error(`Error fetching rules from ${url}: ${error.message}`);
-    return [];
+    if (error.code === 'ENOENT') {
+      await fs.mkdir(dirPath, { recursive: true });
+      console.log(`Created directory: ${dirPath}`);
+    } else {
+      throw error;
+    }
   }
 }
 
-function processRule(rawRule, ruleType, proxyGroupName) {
-  // Example rawRule: DOMAIN-SUFFIX,google.com,PROXY
-  // or RULE-SET,https://example.com/rules.list,PROXY
-  const parts = rawRule.split(',');
-  if (parts.length < 2) return rawRule; // Not a standard rule format, keep as is
-
-  const policy = parts.pop().trim().toUpperCase(); // Original policy
-  let newPolicy = '';
-
-  switch (ruleType) {
-    case 'PROXY':
-      newPolicy = proxyGroupName; // Points to the main group of user's servers
-      break;
-    case 'BLOCK':
-      newPolicy = 'REJECT';
-      break;
-    case 'DIRECT':
-      newPolicy = 'DIRECT';
-      break;
-    default:
-      newPolicy = policy; // If unknown type, keep original policy from rule source
-  }
-  return `${parts.join(',')},${newPolicy}`;
-}
-
-// --- Main Generation Logic ---
-async function generateConfig(options) {
-  console.log('Starting Clash config generation with options:', options);
-
-  // 4. Load and Process Rule Sources (Common to both modes or done first for rules-only)
+// Function to fetch rules from URLs and merge them
+async function fetchAndProcessRules() {
+  console.log('Fetching and processing rule sources...');
   let ruleSources = [];
   try {
-    ruleSources = JSON.parse(fs.readFileSync(options.rules_file, 'utf8'));
-    if (!Array.isArray(ruleSources)) throw new Error('Rule-sources.json should be an array.');
+    const ruleSourcesData = await fs.readFile(RULE_SOURCES_JSON_PATH, 'utf8');
+    ruleSources = JSON.parse(ruleSourcesData);
   } catch (error) {
-    console.error(`Error loading or parsing rule sources file (${options.rules_file}): ${error.message}`);
-    process.exit(1);
+    console.error(`Error reading rule sources file (${RULE_SOURCES_JSON_PATH}):`, error.message);
+    console.log('Proceeding with an empty rule set.');
+    ruleSources = [];
   }
 
-  let allProcessedRules = [];
-  const userProxyGroupName = 'USER_PROXIES'; // Used in full config mode
-  const placeholderProxyGroup = 'USER_SPECIFIED_PROXY_GROUP'; // Potentially for rules-only if needed
+  const enabledRuleSources = ruleSources.filter(source => source.enabled && source.url);
+  if (enabledRuleSources.length === 0) {
+    console.log('No enabled rule sources found. Writing empty generated_rules.txt.');
+    await ensureDirectoryExists(OUTPUT_DIR);
+    await fs.writeFile(GENERATED_RULES_TXT_PATH, '', 'utf8');
+    console.log(`Wrote empty rules to ${GENERATED_RULES_TXT_PATH}`);
+    return;
+  }
 
-  if (!options.rulesOnly && options.processedRulesFile) {
-    console.log(`Loading pre-processed rules from ${options.processedRulesFile}...`);
+  let allRulesContent = [];
+  for (const source of enabledRuleSources) {
     try {
-      const rawRulesContent = fs.readFileSync(options.processedRulesFile, 'utf8');
-      allProcessedRules = rawRulesContent.split(/\r?\n/).filter(line => line.trim());
-      console.log(`Loaded ${allProcessedRules.length} pre-processed rules.`);
-    } catch (error) {
-      console.error(`Error loading processed rules file (${options.processedRulesFile}): ${error.message}`);
-      process.exit(1);
-    }
-  } else if (options.rulesFile) { // Process rules_file if rulesOnly or processedRulesFile not given in full mode
-    console.log(`Processing rule sources from ${options.rulesFile}...`);
-    for (const source of ruleSources) {
-      if (source.enabled) {
-        console.log(`Fetching rules from ${source.name} (${source.url}) of type ${source.type}...`);
-        const remoteRules = await fetchRemoteRules(source.url);
-        remoteRules.forEach(rawRule => {
-          // Determine which proxy group name to use for processRule
-          const groupNameToUse = options.rulesOnly ? placeholderProxyGroup : userProxyGroupName;
-          allProcessedRules.push(processRule(rawRule, source.type, groupNameToUse));
-        });
-        console.log(`Added ${remoteRules.length} rules from ${source.name}.`);
+      console.log(`Fetching rules from: ${source.name} (${source.url})`);
+      const response = await axios.get(source.url, { timeout: 15000 }); // 15 seconds timeout
+      if (response.data && typeof response.data === 'string') {
+        // Add a comment indicating the source of the rules
+        allRulesContent.push(`# Rules from: ${source.name} (${source.url})`);
+        allRulesContent.push(...response.data.split('\n').filter(line => line.trim() !== '' && !line.trim().startsWith('#')));
+        allRulesContent.push(''); // Add a blank line for separation
+      } else {
+        console.warn(`Warning: No data or invalid data format from ${source.url}`);
       }
-    }
-    console.log(`Total processed rules from sources: ${allProcessedRules.length}.`);
-  } else if (!options.rulesOnly) {
-    // Full config mode but neither rules_file nor processed_rules_file provided
-    console.error('Error: For full config generation, either --rules_file or --processed_rules_file must be provided.');
-    process.exit(1);
-  }
-
-  if (options.rulesOnly) {
-    // --- Rules-Only Mode --- 
-    try {
-      fs.writeFileSync(options.rulesOutputFile, allProcessedRules.join('\n'), 'utf8');
-      console.log(`Successfully generated rules-only file at ${options.rulesOutputFile}`);
     } catch (error) {
-      console.error(`Error writing rules-only output file (${options.rulesOutputFile}): ${error.message}`);
-      process.exit(1);
+      console.error(`Error fetching rules from ${source.url}:`, error.message);
     }
-    return; // End execution for rules-only mode
   }
 
-  // --- Full Config Mode (original logic continues below) ---
-  
+  await ensureDirectoryExists(OUTPUT_DIR);
+  await fs.writeFile(GENERATED_RULES_TXT_PATH, allRulesContent.join('\n'), 'utf8');
+  console.log(`Successfully wrote merged rules to ${GENERATED_RULES_TXT_PATH}`);
+}
 
-  // 1. Load Base Config
-  let baseConfig;
+// Function to generate the final Clash config.yaml
+async function generateClashConfig() {
+  console.log('Generating final Clash config.yaml...');
+
+  let serversConfig = [];
   try {
-    baseConfig = yaml.load(fs.readFileSync(options.base_file, 'utf8'));
+    const serversData = await fs.readFile(SERVERS_JSON_PATH, 'utf8');
+    serversConfig = JSON.parse(serversData);
+    if (!Array.isArray(serversConfig)) {
+        console.error(`Error: ${SERVERS_JSON_PATH} is not a valid JSON array. Using empty proxy list.`);
+        serversConfig = [];
+    }
   } catch (error) {
-    console.error(`Error loading base YAML file (${options.base_file}): ${error.message}`);
-    process.exit(1);
+    console.error(`Error reading servers config file (${SERVERS_JSON_PATH}):`, error.message);
+    console.log('Proceeding with an empty proxy list.');
   }
 
-  // 2. Load Servers
-  let servers = [];
+  let rulesList = [];
   try {
-    servers = JSON.parse(fs.readFileSync(options.servers_file, 'utf8'));
-    if (!Array.isArray(servers)) throw new Error('Servers.json should be an array.');
+    const rulesData = await fs.readFile(GENERATED_RULES_TXT_PATH, 'utf8');
+    rulesList = rulesData.split('\n').filter(line => line.trim() !== '' && !line.trim().startsWith('#'));
   } catch (error) {
-    console.error(`Error loading or parsing servers file (${options.servers_file}): ${error.message}`);
-    process.exit(1);
-  }
-  baseConfig.proxies = servers;
-  console.log(`Loaded ${servers.length} proxies.`);
-
-  // 3. Update Proxy Groups (ensure a primary group for user servers exists)
-  if (baseConfig['proxy-groups'] && Array.isArray(baseConfig['proxy-groups'])) {
-    const mainProxyGroup = baseConfig['proxy-groups'].find(g => g.name === userProxyGroupName);
-    if (mainProxyGroup) {
-      mainProxyGroup.proxies = servers.map(s => s.name);
-      console.log(`Updated '${userProxyGroupName}' with ${servers.length} server names.`);
-    } else {
-      console.warn(`Warning: Proxy group named '${userProxyGroupName}' not found in base.yaml. User servers might not be selectable.`);
-      // Optionally, create a default group if it's missing
-      baseConfig['proxy-groups'].push({
-        name: userProxyGroupName,
-        type: 'select',
-        proxies: servers.map(s => s.name)
-      });
-      console.log(`Created default '${userProxyGroupName}' group.`);
-    }
-    // Ensure DIRECT and REJECT are available for rules if not already in groups
-    if (!baseConfig['proxy-groups'].some(g => g.name === 'DIRECT')) {
-        baseConfig['proxy-groups'].push({ name: 'DIRECT', type: 'select', proxies: ['DIRECT'] });
-    }
-    if (!baseConfig['proxy-groups'].some(g => g.name === 'REJECT')) {
-        baseConfig['proxy-groups'].push({ name: 'REJECT', type: 'select', proxies: ['REJECT'] });
-    }
-  } else {
-    console.warn('Warning: No proxy-groups array found in base.yaml. Rule processing might be affected.');
-    baseConfig['proxy-groups'] = [
-      { name: userProxyGroupName, type: 'select', proxies: servers.map(s => s.name) },
-      { name: 'DIRECT', type: 'select', proxies: ['DIRECT'] },
-      { name: 'REJECT', type: 'select', proxies: ['REJECT'] }
-    ];
+    console.error(`Error reading generated rules file (${GENERATED_RULES_TXT_PATH}):`, error.message);
+    console.log('Proceeding with an empty rule list. Run with --rules-only first if needed.');
   }
 
-  // Rules already processed and stored in allProcessedRules if rulesOnly was false
-  // Now merge them into baseConfig
-  if (baseConfig.rules && Array.isArray(baseConfig.rules)) {
-    baseConfig.rules.push(...allProcessedRules); // Add rules from base.yaml first, then processed remote rules
-  } else {
-    baseConfig.rules = allProcessedRules;
-  }
-  console.log(`Total rules in config: ${baseConfig.rules.length}.`);
+  const proxyNames = serversConfig.map(p => p.name);
 
-  // 5. Add final MATCH rule if not present (optional, base.yaml should ideally have it)
-  if (!baseConfig.rules.some(rule => rule.startsWith('MATCH,'))) {
-    console.log("No 'MATCH' rule found, adding 'MATCH,DIRECT' as default final rule.");
-    baseConfig.rules.push('MATCH,DIRECT');
-  }
+  const clashConfig = {
+    'port': 7890,
+    'socks-port': 7891,
+    'allow-lan': false,
+    'mode': 'rule',
+    'log-level': 'info',
+    'external-controller': '0.0.0.0:9090',
+    'dns': {
+        'enable': true,
+        'listen': '0.0.0.0:53',
+        'default-nameserver': ['8.8.8.8', '1.1.1.1'],
+        'enhanced-mode': 'fake-ip',
+        'fake-ip-range': '198.18.0.1/16',
+        'nameserver': ['8.8.8.8', '1.1.1.1'],
+        'fallback': []
+    },
+    'proxies': serversConfig.length > 0 ? serversConfig : [],
+    'proxy-groups': [
+      {
+        'name': '🚀 Proxy',
+        'type': 'select',
+        'proxies': proxyNames.length > 0 ? [...proxyNames, 'DIRECT'] : ['DIRECT']
+      },
+      {
+        'name': '🎯 DIRECT',
+        'type': 'select',
+        'proxies': ['DIRECT']
+      },
+      {
+        'name': '🛑 REJECT',
+        'type': 'select',
+        'proxies': ['REJECT']
+      }
+      // Add more complex groups as needed, e.g., for specific regions or fallback
+    ],
+    'rules': rulesList.length > 0 ? rulesList : [
+        'MATCH,🚀 Proxy' // Default rule if no rules are loaded
+    ]
+  };
 
-  // 6. Write Output Config
   try {
-    const yamlStr = yaml.dump(baseConfig, { lineWidth: 1000, sortKeys: false });
-    fs.writeFileSync(options.output_file, yamlStr, 'utf8');
-    console.log(`Successfully generated Clash config at ${options.output_file}`);
+    await ensureDirectoryExists(OUTPUT_DIR);
+    const yamlString = yaml.dump(clashConfig, { indent: 2, noArrayIndent: true });
+    await fs.writeFile(OUTPUT_CONFIG_YAML_PATH, yamlString, 'utf8');
+    console.log(`Successfully generated Clash config at ${OUTPUT_CONFIG_YAML_PATH}`);
   } catch (error) {
-    console.error(`Error writing output YAML file (${options.output_file}): ${error.message}`);
-    process.exit(1);
+    console.error('Error writing final config.yaml:', error.message);
   }
 }
 
-// --- CLI Setup ---
-if (require.main === module) {
+async function main() {
   program
-    .version('1.0.0')
-    .description('Generates a Clash configuration file by merging a base template, server list, and remote rule sources.')
-    .option('--base_file <path>', 'Path to the base YAML config file (e.g., ./templates/base.yaml)')
-    .option('--servers_file <path>', 'Path to the JSON file containing server definitions (e.g., ./config/servers.json)')
-    .option('--rules_file <path>', 'Path to the JSON file defining rule sources (e.g., ./config/rule-sources.json)')
-    .option('--processed_rules_file <path>', 'Path to a pre-processed text file containing rules, one per line.')
-    .option('--output_file <path>', 'Path for the generated output Clash config YAML file (e.g., ./output/config.yaml)')
-    .option('--rules-only', 'Only process rules from rules_file and output to rules-output-file', false)
-    .option('--rules-output-file <path>', 'Path for the generated rules-only text file (e.g., ./output/generated_rules.txt)')
-    .action((options) => {
-      if (options.rulesOnly) {
-        if (!options.rulesFile || !options.rulesOutputFile) {
-          console.error('Error: --rules_file and --rules-output-file are required when --rules-only is specified.');
-          process.exit(1);
-        }
-      } else { // Full config mode
-        if (!options.baseFile || !options.serversFile || !options.outputFile) {
-          console.error('Error: --base_file, --servers_file, and --output_file are required for full config generation.');
-          process.exit(1);
-        }
-        if (!options.rulesFile && !options.processedRulesFile) {
-          console.error('Error: For full config generation, either --rules_file or --processed_rules_file must be provided.');
-          process.exit(1);
-        }
-        if (options.rulesFile && options.processedRulesFile) {
-          console.error('Error: --rules_file and --processed_rules_file cannot be used simultaneously for full config generation.');
-          process.exit(1);
-        }
-      }
-      generateConfig(options);
-    });
+    .option('--rules-only', 'Fetch and process rule sources only, output to generated_rules.txt')
+    .parse(process.argv);
 
-  program.parse(process.argv);
+  const options = program.opts();
+
+  try {
+    await ensureDirectoryExists(CONFIG_DIR);
+    await ensureDirectoryExists(OUTPUT_DIR);
+
+    if (options.rulesOnly) {
+      await fetchAndProcessRules();
+    } else {
+      // If not --rules-only, we assume generated_rules.txt might need to be created or updated first,
+      // then proceed to generate the full config.
+      // For a cron job, you might run '--rules-only' first, then run without it.
+      // Or, if running manually without --rules-only, ensure generated_rules.txt is up-to-date.
+      console.log('Full config generation mode: ensuring rules are processed first...');
+      await fetchAndProcessRules(); // Always process rules before generating full config
+      await generateClashConfig();
+    }
+    console.log('Script finished.');
+  } catch (error) {
+    console.error('An unexpected error occurred:', error);
+    process.exit(1);
+  }
 }
 
-module.exports = { generateConfig }; // For potential programmatic use
+main();

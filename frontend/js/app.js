@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadGeneratedConfigBtn = document.getElementById('load-generated-config-btn');
 
     const triggerGenerationBtn = document.getElementById('trigger-generation-btn');
+    const saveGeneratedConfigBtn = document.getElementById('save-generated-config-btn');
     
     const serverStatusText = document.getElementById('server-status-text');
 
@@ -182,6 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     saveAllRulesBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to save these rule sources to the server (config/rule-sources.json)? This will overwrite the existing file.')) {
+            return;
+        }
         try {
             await apiRequest('/rule-sources', 'POST', ruleSources);
             alert('Rule sources saved to server successfully!');
@@ -240,14 +244,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     triggerGenerationBtn.addEventListener('click', async () => {
-        if (!confirm('Are you sure you want to trigger a full config regeneration via GitHub Actions?')) {
+        if (!confirm('Are you sure you want to trigger the server to fetch remote rules and regenerate config.yaml locally? This will overwrite the current generated config.yaml.')) {
             return;
         }
         try {
             await apiRequest('/trigger-generation', 'POST');
-            alert('Config generation workflow triggered successfully! Check GitHub Actions for progress.');
+            alert('Local rule fetching and config generation process initiated on the server. The new config.yaml should be available shortly. Check server logs for details.');
         } catch (error) {
             // Error handled by apiRequest
+        }
+    });
+
+    saveGeneratedConfigBtn.addEventListener('click', async () => {
+        const yamlContent = configYamlEditor.getValue();
+        if (!yamlContent.trim()) {
+            alert('Config YAML content cannot be empty.');
+            return;
+        }
+        if (!confirm('Are you sure you want to save this content to config.yaml on the server? This will overwrite the existing file and will be overridden by the next automatic generation if rules are processed.')) {
+            return;
+        }
+        try {
+            await apiRequest('/config/save', 'POST', { content: yamlContent });
+            alert('config.yaml saved to server successfully!');
+        } catch (error) {
+            // Error already handled by apiRequest
         }
     });
 
