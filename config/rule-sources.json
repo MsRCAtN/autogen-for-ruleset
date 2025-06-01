@@ -1,0 +1,23 @@
+[
+  {
+    "id": "example-proxy-rules",
+    "name": "Example Proxy Ruleset",
+    "url": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyLite.list",
+    "type": "PROXY",
+    "enabled": true
+  },
+  {
+    "id": "example-block-rules",
+    "name": "Example Ad Block Ruleset",
+    "url": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanAD.list",
+    "type": "BLOCK",
+    "enabled": true
+  },
+  {
+    "id": "example-direct-rules",
+    "name": "Example Direct Ruleset",
+    "url": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Direct.list",
+    "type": "DIRECT",
+    "enabled": true
+  }
+]

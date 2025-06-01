@@ -1,2 +1,6 @@
-/secret/
-/server/servers.json
+secret/
+node_modules/
+server/servers.json
+output/config.yaml
+.DS_Store
+config/servers.json

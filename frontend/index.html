@@ -1,69 +1,100 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Clash 配置生成与微调</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
-  <style>
-    body{font-family:sans-serif;margin:1em;}
-    #container{display:flex;gap:1em;}
-    textarea{width:100%;height:400px;font-family:monospace;}
-    #jsonArea{flex:1;}
-    #yamlEditor{flex:1;border:1px solid #ccc;}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clash Config Manager</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/theme/material-palenight.min.css">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <h1>后端 JSON 列表 & 配置预览</h1>
-  <button id="save">保存并生成</button>
-  <button id="refresh">刷新预览</button>
-  <div id="container">
-    <textarea id="jsonArea" placeholder="在此编辑 servers.json"></textarea>
-    <div id="yamlEditor"></div>
-  </div>
+    <div class="app-container">
+        <header>
+            <h1>Clash Configuration Manager</h1>
+        </header>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/yaml/yaml.min.js"></script>
-  <script>
-    const jsonArea = document.getElementById('jsonArea');
-    const saveBtn  = document.getElementById('save');
-    const refresh  = document.getElementById('refresh');
+        <main>
+            <div class="section-tabs">
+                <button class="tab-button active" data-tab="rules">Rule Sources</button>
+                <button class="tab-button" data-tab="servers">Server Config (servers.json)</button>
+                <button class="tab-button" data-tab="config">Generated Config (config.yaml)</button>
+            </div>
 
-    // 初始化 YAML 编辑器（只读，可根据需求设置成可写）
-    const yamlEditor = CodeMirror(document.getElementById('yamlEditor'), {
-      mode: 'yaml',
-      lineNumbers: true,
-      readOnly: false,        // 如果需要直接编辑，可设 false
-      theme: 'default'
-    });
+            <!-- Rule Sources Management Tab -->
+            <div id="rules-tab" class="tab-content active">
+                <h2>Manage Rule Sources</h2>
+                <div id="rule-sources-list">
+                    <!-- Rule sources will be dynamically loaded here -->
+                </div>
+                <button id="add-rule-source-btn">Add New Rule Source</button>
+                <div id="rule-source-form-container" style="display:none;">
+                    <h3>Add/Edit Rule Source</h3>
+                    <form id="rule-source-form">
+                        <input type="hidden" id="rule-id" name="id">
+                        <div>
+                            <label for="rule-name">Name:</label>
+                            <input type="text" id="rule-name" name="name" required>
+                        </div>
+                        <div>
+                            <label for="rule-url">URL:</label>
+                            <input type="url" id="rule-url" name="url" required>
+                        </div>
+                        <div>
+                            <label for="rule-type">Type:</label>
+                            <select id="rule-type" name="type">
+                                <option value="PROXY">PROXY</option>
+                                <option value="BLOCK">BLOCK</option>
+                                <option value="DIRECT">DIRECT</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="rule-enabled">Enabled:</label>
+                            <input type="checkbox" id="rule-enabled" name="enabled" checked>
+                        </div>
+                        <button type="submit" id="save-rule-source-btn">Save Rule Source</button>
+                        <button type="button" id="cancel-rule-source-btn">Cancel</button>
+                    </form>
+                </div>
+                <button id="save-all-rules-btn">Save All Rule Sources to Server</button>
+            </div>
 
-    // Load servers.json
-    fetch('/api/servers').then(r=>r.json()).then(data=>{
-      jsonArea.value = JSON.stringify(data, null, 2);
-    });
+            <!-- Server Config Management Tab -->
+            <div id="servers-tab" class="tab-content">
+                <h2>Manage Server Configuration (servers.json)</h2>
+                <p>Server configurations are stored as a JSON array in <code>config/servers.json</code> on the local server. This file is <strong>NOT</strong> committed to your GitHub repository and remains private to this server.</p>
+                <p>You can edit the content of this file below. The content should be a valid JSON array of Clash proxy objects.</p>
+                <div class="editor-container">
+                    <textarea id="servers-json-editor"></textarea>
+                </div>
+                <button id="load-servers-json-btn">Load servers.json from Server</button>
+                <button id="save-servers-json-btn">Save servers.json to Server</button>
+                <p><small>This will save the content to <code>config/servers.json</code> on the server. It will <strong>NOT</strong> be committed to GitHub.</small></p>
+                 <p><small>Example server entry: <code>{"name":"My Server","type":"ss","server":"your.server.com","port":8080,...}</code></small></p>
+            </div>
 
-    // 点击保存 → POST JSON → 重新生成 → 刷新预览
-    saveBtn.onclick = () => {
-      try {
-        const payload = JSON.parse(jsonArea.value);
-        fetch('/api/servers', {
-          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
-        }).then(r=>{
-          if(r.ok) alert('保存成功，已生成最新 config.yaml');
-          else alert('保存失败');
-        });
-      } catch(e) { alert('JSON 语法错误：'+e); }
-    };
+            <!-- Generated Config (config.yaml) Tab -->
+            <div id="config-tab" class="tab-content">
+                <h2>View/Edit Generated config.yaml</h2>
+                <p>This is the final Clash configuration file, generated locally on the server using repository rules and local server settings. You can view its content here. Use the 'Update Rules in Repository' button to fetch the latest rule definitions to your GitHub repository.</p>
+                <div class="editor-container">
+                    <div id="config-yaml-editor"></div> <!-- CodeMirror will attach here -->
+                </div>
+                <button id="load-generated-config-btn">Load Generated Config from Server</button>
+                
+                <button id="trigger-generation-btn">Update Rules in Repository (via GitHub Actions)</button>
+            </div>
+        </main>
 
-    // 刷新预览
-    function loadPreview() {
-      fetch('/api/preview')
-        .then(r=>r.text())
-        .then(txt=> yamlEditor.setValue(txt));
-    }
-    refresh.onclick = loadPreview;
+        <footer>
+            <p>Clash Config Manager</p>
+            <div id="status-indicator">Server Status: <span id="server-status-text">Unknown</span></div>
+        </footer>
+    </div>
 
-    // 首次预览
-    loadPreview();
-  </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/yaml/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/javascript/javascript.min.js"></script> <!-- For JSON editing -->
+    <script src="js/app.js"></script>
 </body>
 </html>

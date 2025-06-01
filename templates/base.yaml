@@ -1,13 +1,91 @@
+# Basic Clash Configuration Template (base.yaml)
+
+# General settings
 port: 7890
-socks-port: 7891
+mixed-port: 7891 # HTTP and SOCKS5 on the same port, if your Clash version supports it. Otherwise, use separate port and socks-port.
+socks-port: 7892 # Dedicated SOCKS5 port if mixed-port is not used or for specific needs
+allow-lan: true
 mode: rule
-external-controller: 127.0.0.1:9090
+log-level: info # Recommended levels: info, warning, error, silent
+external-controller: '127.0.0.1:9090' # For external UI controllers like Clash Dashboard
+# external-ui: dashboard # Path to the dashboard, e.g., ./dashboard
+
 dns:
-  enable: false
-  listen: 0.0.0.0:53
+  enable: true # Enable DNS server
+  listen: 0.0.0.0:5353 # DNS listening port
+  ipv6: false # Disable IPv6 DNS resolution if not needed or causing issues
   default-nameserver:
-    - 114.114.114.114
-    - 8.8.8.8
-  nameserver:
-    - 114.114.114.114
-    - 8.8.8.8
+    - 223.5.5.5       # AliDNS
+    - 119.29.29.29    # DNSPod
+    - 1.1.1.1         # Cloudflare DNS
+  enhanced-mode: redir-host # Use 'fake-ip' for better compatibility with some services, or 'redir-host'
+  fake-ip-range: 198.18.0.1/16 # Required if using fake-ip
+  # fallback:
+  #   - https://dns.google/dns-query
+  #   - https://1.1.1.1/dns-query
+  # nameserver-policy:
+  #   'your.domain.com': '114.114.114.114' # Specify DNS for specific domains
+
+# Proxies - This section will be replaced by servers.json content by generateConfig.js
+proxies:
+  - name: PlaceholderProxy
+    type: ss
+    server: your.server.address
+    port: 8080
+    cipher: aes-256-gcm
+    password: "your_password"
+
+# Proxy Groups - This section will be heavily managed by generateConfig.js
+proxy-groups:
+  - name: USER_PROXIES # This group will be populated by servers.json
+    type: select
+    # Proxies will be automatically added here by generateConfig.js
+    # It's good to have at least one fallback if no servers are loaded or all fail
+    proxies:
+      - DIRECT
+
+  - name: Proxy # Main policy group for most rules
+    type: select
+    proxies:
+      - USER_PROXIES
+      - DIRECT # Fallback to DIRECT if all user proxies fail or if selected
+
+  # It's good practice to have explicit DIRECT and REJECT groups if your rules point to them.
+  # generateConfig.js will ensure these are available if rules need them.
+  - name: DIRECT
+    type: select # Though it only contains DIRECT, it's structured as a group
+    proxies:
+      - DIRECT
+
+  - name: BLOCK # For BLOCK rules, they will point to REJECT policy
+    type: select
+    proxies:
+      - REJECT
+      # - DIRECT # Optionally, can decide to make block rules go direct instead of reject
+
+# Rules - Some base rules can be defined here.
+# generateConfig.js will append rules from rule-sources.json after these.
+rules:
+  # Common LAN/Private IP addresses - direct connection
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-KEYWORD,localhost,DIRECT
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,198.18.0.0/15,DIRECT,no-resolve # Used by some VPNs for keep-alive
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+
+  # Add other global or fixed rules here if needed
+  # For example, rules for specific applications or services that always go DIRECT or always use a specific proxy.
+  # - DOMAIN-SUFFIX,apple.com,DIRECT
+  # - DOMAIN-KEYWORD,microsoft,DIRECT
+
+  # Rules from rule-sources.json will be appended here by generateConfig.js
+
+  # Final Match Rule - This should ideally be the last rule.
+  # generateConfig.js will add 'MATCH,DIRECT' if no MATCH rule is found after processing all sources.
+  - MATCH,Proxy # Default to using the 'Proxy' group (which includes USER_PROXIES and DIRECT)

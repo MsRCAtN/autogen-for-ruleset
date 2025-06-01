@@ -1,0 +1,31 @@
+[
+  {
+    "id": "server-example-1",
+    "name": "My Example Server (US)",
+    "type": "ss",
+    "server": "us.exampleproxy.com",
+    "port": 8888,
+    "cipher": "aes-256-gcm",
+    "password": "your_password_here",
+    "udp": true
+  },
+  {
+    "id": "server-example-2",
+    "name": "My Example Server (JP)",
+    "type": "vmess",
+    "server": "jp.exampleproxy.com",
+    "port": 12345,
+    "uuid": "your_uuid_here",
+    "alterId": 0,
+    "cipher": "auto",
+    "tls": true,
+    "servername": "jp.exampleproxy.com",
+    "network": "ws",
+    "ws-opts": {
+      "path": "/your_path",
+      "headers": {
+        "Host": "jp.exampleproxy.com"
+      }
+    }
+  }
+]
