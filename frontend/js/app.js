@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         try {
             const serversData = JSON.parse(serversJsonString);
-            if (!confirm('Are you sure you want to update the GitHub Secret with this content? This will replace the existing secret.')) {
+            if (!confirm('Are you sure you want to save this server configuration to the local server (config/servers.json)?')) {
                 return;
             }
             await apiRequest('/servers', 'POST', serversData);
