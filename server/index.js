@@ -3,6 +3,14 @@
 const express = require('express');
 const fs = require('fs').promises; // Use promise-based fs for async operations
 const path = require('path');
+
+// --- Dotenv Configuration ---
+// Explicitly load .env from the project root.
+// server/index.js is in the 'server/' directory, so we go one level up.
+const envPath = path.resolve(__dirname, '..', '.env');
+require('dotenv').config({ path: envPath });
+// --- End Dotenv Configuration ---
+
 const basicAuth = require('express-basic-auth');
 const { Octokit } = require('@octokit/rest'); // For GitHub API interactions
 const crypto = require('crypto'); // For key generation if needed, not for secret encryption here
