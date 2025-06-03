@@ -301,7 +301,7 @@ let editingRuleSourceId = null;
                     return;
                 }
 
-                const enabledCheckbox = element.querySelector(`#enabled-${iterationIndex}`);
+                const enabledCheckbox = element.querySelector(`#enabled-${index}`); // Changed iterationIndex to index
                 const targetPolicySelect = element.querySelector(`#targetPolicy-${index}`);
 
                 if (!enabledCheckbox || !targetPolicySelect) {
