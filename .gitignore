@@ -4,3 +4,4 @@ server/servers.json
 output/config.yaml
 .DS_Store
 config/servers.json
+config/example.yaml
