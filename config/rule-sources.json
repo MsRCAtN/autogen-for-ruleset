@@ -1,23 +1,90 @@
 [
   {
-    "id": "example-proxy-rules",
-    "name": "Example Proxy Ruleset",
-    "url": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyLite.list",
-    "type": "PROXY",
+    "id": "sukka-reject-ads-keywords",
+    "name": "Sukka Ads & Tracking (Keywords from reject.txt)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/reject.txt",
+    "ruleType": "DOMAIN-KEYWORD",
+    "targetPolicy": "Reject",
+    "enabled": false
+  },
+  {
+    "id": "sukka-reject-ads-domains",
+    "name": "Sukka Ads & Tracking (Domains from reject_domainset.txt)",
+    "url": "https://ruleset.skk.moe/Clash/domainset/reject.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Reject",
+    "enabled": false
+  },
+  {
+    "id": "sukka-lan-ips",
+    "name": "Sukka LAN IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/lan.txt",
+    "ruleType": "IP-CIDR",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-china-ips",
+    "name": "Sukka China IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/china_ip.txt",
+    "ruleType": "IP-CIDR",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-apple-cn",
+    "name": "Sukka Apple CN Services",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/apple_cn.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": false
+  },
+  {
+    "id": "sukka-domestic-sites",
+    "name": "Sukka Domestic Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/domestic.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-streaming-all",
+    "name": "Sukka Streaming Services (All)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/stream.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": false
+  },
+  {
+    "id": "sukka-ai-services",
+    "name": "Sukka AI Services",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/ai.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-telegram-ips",
+    "name": "Sukka Telegram IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/telegram.txt",
+    "ruleType": "IP-CIDR",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-global-sites",
+    "name": "Sukka Global/International Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/global.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
     "enabled": true
   },
   {
-    "id": "example-block-rules",
-    "name": "Example Ad Block Ruleset",
-    "url": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanAD.list",
-    "type": "BLOCK",
-    "enabled": true
-  },
-  {
-    "id": "example-direct-rules",
-    "name": "Example Direct Ruleset",
-    "url": "https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Direct.list",
-    "type": "DIRECT",
+    "id": "my-local-test-source",
+    "name": "My Local Test Source",
+    "url": "file:///Users/resyurika/Desktop/code/autogen-for-ruleset/test-rules.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
     "enabled": true
   }
 ]

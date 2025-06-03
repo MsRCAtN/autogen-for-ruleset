@@ -3,6 +3,7 @@
 const express = require('express');
 const fs = require('fs').promises; // Use promise-based fs for async operations
 const path = require('path');
+const yaml = require('js-yaml'); // Added for YAML parsing
 
 // --- Dotenv Configuration ---
 // Explicitly load .env from the project root.
@@ -17,6 +18,7 @@ const crypto = require('crypto'); // For key generation if needed, not for secre
 const { exec: execCallback } = require('child_process');
 const util = require('util');
 const exec = util.promisify(execCallback);
+const { generateConfig } = require('./generateConfig'); // Corrected import name
 
 // Attempt to load libsodium-wrappers for GitHub secret encryption
 let sodium;
@@ -29,6 +31,8 @@ try {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const RULE_SOURCES_PATH = path.join(__dirname, '..', 'config', 'rule-sources.json');
 
 // --- Configuration ---
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || 'admin';
@@ -49,23 +53,27 @@ const users = { [ADMIN_USERNAME]: ADMIN_PASSWORD };
 //   );
 // }
 
-const RULE_SOURCES_PATH = path.join(__dirname, '..', 'config', 'rule-sources.json');
 const SERVERS_JSON_PATH = path.join(__dirname, '..', 'config', 'servers.json'); 
 const OUTPUT_CONFIG_PATH = path.join(__dirname, '..', 'output', 'config.yaml');
-const FRONTEND_PATH = path.join(__dirname, '..', 'frontend');
+// const FRONTEND_PATH = path.join(__dirname, '..', 'frontend'); // Old frontend path, no longer used
 const SERVER_PACKAGE_JSON_PATH = path.join(__dirname, 'package.json');
 
 // --- Middleware ---
-app.use(express.json()); 
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-app.use(express.static(FRONTEND_PATH));
+// Serve static files from the 'public' directory
+app.use(express.static(PUBLIC_DIR));
+
+// app.use(express.static(FRONTEND_PATH)); // Old frontend static serving, replaced by PUBLIC_DIR
 
 const protectRoute = basicAuth({
   users: users,
   challenge: true,
   realm: 'AdminArea',
 });
+
+const basicAuthMiddleware = protectRoute;
 
 // --- API Endpoints ---
 app.get('/api/status', (req, res) => {
@@ -76,7 +84,7 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-app.get('/api/rule-sources', protectRoute, async (req, res) => {
+app.get('/api/rule-sources', basicAuthMiddleware, async (req, res) => {
   try {
     const data = await fs.readFile(RULE_SOURCES_PATH, 'utf8');
     res.json(JSON.parse(data));
@@ -86,7 +94,7 @@ app.get('/api/rule-sources', protectRoute, async (req, res) => {
   }
 });
 
-app.post('/api/rule-sources', protectRoute, async (req, res) => {
+app.post('/api/rule-sources', basicAuthMiddleware, async (req, res) => {
   try {
     const newRuleSources = req.body;
     if (!Array.isArray(newRuleSources)) {
@@ -94,15 +102,14 @@ app.post('/api/rule-sources', protectRoute, async (req, res) => {
     }
     const newContent = JSON.stringify(newRuleSources, null, 2);
     await fs.writeFile(RULE_SOURCES_PATH, newContent, 'utf8');
-    
-    res.json({ message: 'Rule sources updated locally.' });
+    res.json({ message: 'Rule sources updated successfully.' }); // Only save, no auto-generation
   } catch (error) {
-    console.error('Error writing or committing rule-sources.json:', error);
+    console.error('Error writing rule-sources.json:', error);
     res.status(500).json({ error: 'Failed to update rule sources.' });
   }
 });
 
-app.get('/api/servers', protectRoute, async (req, res) => {
+app.get('/api/servers', basicAuthMiddleware, async (req, res) => {
   try {
     const data = await fs.readFile(SERVERS_JSON_PATH, 'utf8');
     res.json(JSON.parse(data));
@@ -117,56 +124,53 @@ app.get('/api/servers', protectRoute, async (req, res) => {
   }
 });
 
-app.post('/api/servers', protectRoute, async (req, res) => {
+app.post('/api/servers', basicAuthMiddleware, express.text({ type: 'text/plain', limit: '10mb' }), async (req, res) => {
   try {
-    const serversData = req.body;
-    if (!serversData) { // Basic validation
-        return res.status(400).json({ error: 'Invalid data format for servers.' });
+    const serversDataString = req.body; // req.body is now the raw text string
+    if (typeof serversDataString !== 'string' || serversDataString.trim() === '') {
+        return res.status(400).json({ error: 'Invalid data format for servers. Expected non-empty plain text.' });
     }
-    const newContent = JSON.stringify(serversData, null, 2);
-    await fs.writeFile(SERVERS_JSON_PATH, newContent, 'utf8');
+    // Directly write the received string to the file
+    await fs.writeFile(SERVERS_JSON_PATH, serversDataString, 'utf8');
     
     res.json({ message: 'Servers configuration updated locally.' });
   } catch (error) {
-    console.error('Error writing or committing servers.json:', error);
+    console.error('Error writing servers.json:', error);
     res.status(500).json({ error: 'Failed to update servers configuration.' });
   }
 });
 
-app.post('/api/trigger-generation', protectRoute, async (req, res) => {
-  const projectRoot = path.resolve(__dirname, '..');
-  const generateScriptPath = path.join(projectRoot, 'server', 'generateConfig.js'); // Assuming script is server/generateConfig.js
+app.get('/api/proxy-groups', basicAuthMiddleware, async (req, res) => {
+    const templatePath = path.join(__dirname, '../config/config.template.yaml');
+    try {
+        const fileContent = await fs.readFile(templatePath, 'utf8');
+        const config = yaml.load(fileContent);
+        if (config && Array.isArray(config['proxy-groups'])) {
+            const groupNames = config['proxy-groups'].map(group => group.name).filter(name => name);
+            // Also include standard policies that are not groups
+            const standardPolicies = ['Direct', 'Reject']; // These are common and might not be in proxy-groups
+            const allPolicies = Array.from(new Set([...standardPolicies, ...groupNames]));
+            res.json(allPolicies);
+        } else {
+            // Fallback if proxy-groups are not found or not in expected format
+            res.json(['Direct', 'Proxy', 'Reject']); 
+        }
+    } catch (error) {
+        console.error('Error fetching proxy groups:', error);
+        // Fallback if file reading or parsing fails
+        res.status(500).json({ message: 'Error fetching proxy groups', details: error.message, fallback_policies: ['Direct', 'Proxy', 'Reject'] });
+    }
+});
 
+app.post('/api/trigger-generation', basicAuthMiddleware, async (req, res) => {
+  console.log('Received request to trigger config generation.');
   try {
-    console.log('Step 1: Fetching and processing remote rule sets...');
-    // Command to fetch/process rules. Adjust script name and arguments as needed.
-    const { stdout: rulesStdout, stderr: rulesStderr } = await exec(`node "${generateScriptPath}" --rules-only`, { cwd: projectRoot });
-    if (rulesStderr) {
-      console.warn(`Rule generation script stderr (step 1): ${rulesStderr}`);
-    }
-    console.log(`Rule generation script stdout (step 1): ${rulesStdout}`);
-    console.log('Step 1 completed.');
-
-    console.log('Step 2: Generating final config.yaml...');
-    // Command to generate final config. Adjust script name and arguments as needed.
-    // This might use a flag like --processed_rules_file ./output/generated_rules.txt or similar if your script requires it.
-    const { stdout: finalStdout, stderr: finalStderr } = await exec(`node "${generateScriptPath}"`, { cwd: projectRoot });
-    if (finalStderr) {
-      console.warn(`Config generation script stderr (step 2): ${finalStderr}`);
-    }
-    console.log(`Config generation script stdout (step 2): ${finalStdout}`);
-    console.log('Step 2 completed. Final config.yaml should be generated.');
-
-    res.json({ message: 'Local rule fetching and config generation process completed successfully.' });
-
+    // Using the imported generateConfig function (which was 'main' in generateConfig.js)
+    await generateConfig(); 
+    res.json({ message: 'Clash configuration generation triggered and completed successfully.' });
   } catch (error) {
-    console.error('Error during local config generation process:', error);
-    res.status(500).json({ 
-      error: 'Failed to complete local config generation process.', 
-      details: error.message,
-      stdout: error.stdout,
-      stderr: error.stderr
-    });
+    console.error('Error during triggered config generation:', error);
+    res.status(500).json({ error: 'Failed to generate Clash configuration.', details: error.message });
   }
 });
 
@@ -198,7 +202,7 @@ app.post('/api/config/save', protectRoute, async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(FRONTEND_PATH, 'index.html'));
+    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
 app.listen(PORT, () => {

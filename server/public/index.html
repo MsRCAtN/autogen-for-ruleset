@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clash Config Generator</title>
+    <!-- Materialize CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <div class="nav-wrapper teal">
+            <a href="#" class="brand-logo center">Clash Config Generator</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col s12">
+                <h5 class="center-align">Welcome!</h5>
+                <p class="center-align">Manage your Clash configuration rules and proxies here.</p>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col s12 m6">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">Proxy Servers</span>
+                        <p>Current API for proxy servers: <code>POST /api/servers</code> (text/plain) and <code>GET /api/servers</code>.</p>
+                        <p>UI for proxy management coming soon.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col s12 m6">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">Configuration</span>
+                        <p>Current API for triggering generation: <code>POST /api/trigger-generation</code>.</p>
+                        <p>Current API for downloading config: <code>GET /proxy-config</code>.</p>
+                        <p>UI for rule management and generation coming soon.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+         <div class="row">
+            <div class="col s12">
+                <div class="card">
+                    <div class="card-content">
+                        <span class="card-title">Rule Sources Management</span>
+                        <div id="rule-sources-container">
+                            <p>Loading rule sources...</p>
+                        </div>
+                        <button id="generate-config-button" class="btn waves-effect waves-light blue right" style="margin-left: 10px;">Generate Configuration</button>
+                        <button id="save-rule-sources" class="btn waves-effect waves-light teal right disabled">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Materialize JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

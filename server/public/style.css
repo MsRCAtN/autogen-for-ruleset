@@ -1,0 +1,39 @@
+/* Custom Styles */
+body {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+.nav-wrapper.teal {
+    background-color: #00796b !important; /* A slightly darker Materialize teal */
+}
+
+.card-title {
+    font-weight: 500;
+}
+
+#rule-sources-container .row {
+    margin-bottom: 5px;
+}
+
+#rule-sources-container label {
+    font-size: 1rem;
+}
+
+#rule-sources-container .input-field {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+#rule-sources-container .switch label input[type=checkbox]:checked+.lever {
+    background-color: #80cbc4; /* teal lighten-3 */
+}
+
+#rule-sources-container .switch label input[type=checkbox]:checked+.lever:after {
+    background-color: #00796b; /* teal darken-2 */
+}
