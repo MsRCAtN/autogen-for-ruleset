@@ -1,1 +1,0 @@
-{"port":443,"ps":"7bf22996-VMess_WS","tls":"tls","id":"7bf22996-3d26-4a66-8293-d083dc4c7262","aid":0,"v":2,"host":"us.yurui.xyz","type":"none","path":"/imhyvws","net":"ws","add":"us.yurui.xyz","allowInsecure":0,"method":"none","peer":"us.yurui.xyz","sni":"us.yurui.xyz"}
