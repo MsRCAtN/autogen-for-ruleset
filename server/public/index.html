@@ -54,6 +54,7 @@
                         <div id="rule-sources-container">
                             <p>Loading rule sources...</p>
                         </div>
+                        <button id="add-rule-source-btn" class="btn waves-effect waves-light green right" style="margin-left: 10px;">Add Rule Source</button>
                         <button id="generate-config-button" class="btn waves-effect waves-light blue right" style="margin-left: 10px;">Generate Configuration</button>
                         <button id="save-rule-sources" class="btn waves-effect waves-light teal right disabled">Save Changes</button>
                     </div>
@@ -64,6 +65,60 @@
     </div>
 
     <!-- Materialize JavaScript -->
+    <!-- Add Rule Source Modal Structure -->
+    <div id="add-rule-source-modal" class="modal modal-fixed-footer">
+        <div class="modal-content">
+            <h4>Add New Rule Source</h4>
+            <div class="row">
+                <div class="input-field col s12">
+                    <input id="new-rs-name" type="text" class="validate">
+                    <label for="new-rs-name">Name (Optional)</label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field col s12">
+                    <input id="new-rs-url" type="url" class="validate" required>
+                    <label for="new-rs-url">URL (e.g., https://..., file:///...)</label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="input-field col s12 m6">
+                    <select id="new-rs-type">
+                        <option value="DOMAIN-SUFFIX">DOMAIN-SUFFIX</option>
+                        <option value="DOMAIN-KEYWORD">DOMAIN-KEYWORD</option>
+                        <option value="DOMAIN">DOMAIN</option>
+                        <option value="IP-CIDR">IP-CIDR</option>
+                        <option value="GEOIP">GEOIP</option>
+                        <!-- Add other types as needed -->
+                    </select>
+                    <label for="new-rs-type">Rule Type</label>
+                </div>
+                <div class="input-field col s12 m6">
+                    <select id="new-rs-policy">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                    <label for="new-rs-policy">Target Policy</label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col s12">
+                    <div class="switch">
+                        <label>
+                            Disabled
+                            <input type="checkbox" id="new-rs-enabled" checked>
+                            <span class="lever"></span>
+                            Enabled
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cancel</a>
+            <button id="save-new-rs-btn" class="waves-effect waves-green btn">Save Rule Source</button>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
     <script src="script.js"></script>
 </body>
