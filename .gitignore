@@ -5,3 +5,4 @@ output/config.yaml
 .DS_Store
 config/servers.json
 config/example.yaml
+output/generated_rules.txt
