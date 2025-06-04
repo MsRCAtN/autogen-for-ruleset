@@ -1,0 +1,2 @@
+{"ps":"Test Server 1 (VMess)","add":"test.server.com","port":"443","id":"your-uuid-1","aid":"0","net":"ws","type":"none","host":"test.server.com","path":"/testpath1","tls":"tls","sni":"test.server.com","v":"2"}
+{"ps":"Test Server 2 (SS)","add":"another.test.server.com","port":"8888","method":"aes-256-gcm","password":"testpassword","type":"ss"}

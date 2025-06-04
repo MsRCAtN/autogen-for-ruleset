@@ -214,11 +214,18 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
-app.listen(PORT, () => {
+// --- Server Startup ---
+// Start the server only if this script is run directly (not required as a module)
+if (require.main === module) {
+  app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   console.log(`Admin UI: http://localhost:${PORT}`);
   console.log(`Credentials: ${ADMIN_USERNAME} / ${ADMIN_PASSWORD} (Ensure these are changed and secured, preferably via ENV variables)`);
   // if (!sodium) { // No longer needed for servers.json
     // console.warn('For secure GitHub secret updates for servers.json, please install libsodium-wrappers: npm install libsodium-wrappers');
   // }
-});
+  });
+}
+
+// Export the app instance for testing or other programmatic use
+module.exports = app;

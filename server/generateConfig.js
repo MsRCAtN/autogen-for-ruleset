@@ -11,7 +11,6 @@ const CONFIG_DIR = path.join(PROJECT_ROOT, 'config');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'output');
 
 const RULE_SOURCES_PATH = path.join(CONFIG_DIR, 'rule-sources.json');
-const SERVERS_JSON_PATH = path.join(CONFIG_DIR, 'servers.json');
 const GENERATED_RULES_PATH = path.join(OUTPUT_DIR, 'generated_rules.txt');
 const FINAL_CONFIG_PATH = path.join(OUTPUT_DIR, 'config.yaml');
 
@@ -365,12 +364,13 @@ async function fetchAndProcessRules() {
 }
 
 async function generateClashConfig() {
+  const currentServersJsonPath = process.env.SERVERS_JSON_PATH || path.join(CONFIG_DIR, 'servers.json');
   console.log('Generating final Clash config.yaml...');
   await ensureOutputDir();
 
   let proxies = []; 
   try {
-    const serversFileContent = await fs.readFile(SERVERS_JSON_PATH, 'utf8');
+    const serversFileContent = await fs.readFile(currentServersJsonPath, 'utf8');
     const lines = serversFileContent.split('\n');
     
     for (const line of lines) {
@@ -383,17 +383,17 @@ async function generateClashConfig() {
             proxies.push(clashProxy);
           }
         } catch (parseError) {
-          console.warn(`Skipping invalid JSON line in ${SERVERS_JSON_PATH}: "${trimmedLine.substring(0,100)}...". Error: ${parseError.message}`);
+          console.warn(`Skipping invalid JSON line in ${currentServersJsonPath}: "${trimmedLine.substring(0,100)}...". Error: ${parseError.message}`);
         }
       }
     }
     if (proxies.length === 0) {
-        console.warn(`No valid proxies could be parsed from ${SERVERS_JSON_PATH}. Proceeding with empty proxy list.`);
+        console.warn(`No valid proxies could be parsed from ${currentServersJsonPath}. Proceeding with empty proxy list.`);
     } else {
-        console.log(`Successfully parsed and converted ${proxies.length} proxies from ${SERVERS_JSON_PATH}.`);
+        console.log(`Successfully parsed and converted ${proxies.length} proxies from ${currentServersJsonPath}.`);
     }
   } catch (error) {
-    console.warn(`Error reading or processing servers from ${SERVERS_JSON_PATH}: ${error.message}. Proceeding with empty proxy list.`);
+    console.warn(`Error reading or processing servers from ${currentServersJsonPath}: ${error.message}. Proceeding with empty proxy list.`);
     proxies = []; 
   }
 

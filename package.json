@@ -4,24 +4,32 @@
     "description": "Clash configuration generator and management server",
     "main": "server/index.js",
     "scripts": {
-      "start": "node server/index.js",
-      "generate": "node server/generateConfig.js",
-      "test": "echo \"Error: no test specified\" && exit 1"
+        "start": "node server/index.js",
+        "generate": "node server/generateConfig.js",
+        "test": "jest"
     },
     "keywords": [
-      "clash",
-      "proxy",
-      "config"
+        "clash",
+        "proxy",
+        "config"
     ],
     "author": "MsRCAtN",
     "license": "ISC",
     "dependencies": {
-      "@octokit/rest": "^20.0.0",
-      "axios": "^1.0.0",
-      "commander": "^11.0.0",
-      "dotenv": "^16.0.0",
-      "express": "^4.18.0",
-      "express-basic-auth": "^1.2.1",
-      "js-yaml": "^4.1.0"
+        "@octokit/rest": "^20.0.0",
+        "axios": "^1.0.0",
+        "commander": "^11.0.0",
+        "dotenv": "^16.0.0",
+        "express": "^4.18.0",
+        "express-basic-auth": "^1.2.1",
+        "js-yaml": "^4.1.0"
+    },
+    "jest": {
+    "testEnvironment": "node",
+    "verbose": true
+  },
+  "devDependencies": {
+        "jest": "^29.7.0",
+        "supertest": "^7.1.1"
     }
-  }
+}
