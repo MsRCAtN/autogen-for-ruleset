@@ -376,11 +376,10 @@ let editingRuleSourceId = null;
             try {
                 const response = await fetch('/api/trigger-generation', {
                     method: 'POST',
-                    headers: {
-                        'Authorization': 'Basic ' + btoa('admin:password') // Ensure this matches your backend credentials
+                    headers: { // Authorization header removed
                     }
                 });
-                const result = await response.json(); // Try to parse JSON regardless of ok status for more info
+                const result = await response.json(); 
                 if (!response.ok) {
                     throw new Error(result.message || result.details || `HTTP error! Status: ${response.status}`);
                 }
