@@ -8,3 +8,4 @@ config/example.yaml
 output/generated_rules.txt
 API.md
 .env
+logs/
