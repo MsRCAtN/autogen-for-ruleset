@@ -69,20 +69,12 @@
     "url": "https://ruleset.skk.moe/Clash/ip/telegram.txt",
     "ruleType": "IP-CIDR",
     "targetPolicy": "Direct",
-    "enabled": false
+    "enabled": true
   },
   {
     "id": "sukka-global-sites",
     "name": "Sukka Global/International Sites",
     "url": "https://ruleset.skk.moe/Clash/non_ip/global.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "Direct",
-    "enabled": true
-  },
-  {
-    "id": "my-local-test-source",
-    "name": "My Local Test Source",
-    "url": "file:///Users/resyurika/Desktop/code/autogen-for-ruleset/test-rules.txt",
     "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Direct",
     "enabled": true

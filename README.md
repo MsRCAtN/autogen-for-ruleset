@@ -84,20 +84,94 @@ Currently, the project is configured by default to use rule sources from Sukka.
 *   **Save Changes:** After making inline modifications or confirming deletions, click the "Save Changes" button.
 *   **Generate Config:** Click "Generate Configuration" to view the compiled Clash rules.
 
-## Future Development Plans
+## Project Status
 
-*   **Refine "Save Changes" Button Logic:**
-    *   Implement a more precise mechanism to enable/disable the "Save Changes" button. This will involve comparing the current state of rule sources (including `enabled` status, `targetPolicy`, and `isPendingDeletion` flags) against a "last successfully persisted" snapshot to accurately reflect if there are actual unsaved changes.
-*   **Drag-and-Drop Reordering:** Allow users to reorder rule sources in the list via drag-and-drop, with changes persisted via the "Save Changes" button.
-*   **Backend Enhancements:**
-    *   Improve error handling and provide more descriptive error messages to the frontend.
-    *   Consider making Basic Authentication credentials configurable via environment variables rather than being hardcoded.
-*   **Frontend Enhancements:**
-    *   Add more comprehensive client-side validation for input fields.
-    *   Implement unit and/or integration tests for critical JavaScript logic (e.g., state management, API interactions).
+The project has successfully implemented core functionalities for managing remote rule sources and generating Clash configurations. Key features completed are detailed in the "Key Features (Implemented)" section above. We are now moving towards enhancing these features and building out advanced capabilities as outlined below.
+
+## Roadmap and TODO List
+
+This roadmap outlines the planned development phases, features, and estimated timelines.
+
+### Phase 0: Foundation & Cleanup (Current Focus: Est. ~1-2 Weeks)
+*   **[X] Task: API Endpoint Review & Cleanup**
+    *   **Status:** Completed (Initial review and changes made)
+    *   **Description:** Reviewed API endpoints. `/api/servers` (GET/POST) retained and enhanced for future frontend management of `servers.json` (now expects JSON). `/api/status` retained and secured with Basic Auth. `/api/config/save` removed.
+    *   **Next Step:** Further refinements as frontend for `servers.json` is developed.
+*   **[ ] Task: Standardize Environment Configuration**
+    *   **Status:** Started
+    *   **Description:** Utilize `.env` files for all configurable parameters (port, auth credentials). ` .env.example` created.
+    *   **Next Step:** Ensure all configurable aspects are covered by `.env` and document usage thoroughly.
+*   **[ ] Task: CI/CD Pipeline Setup**
+    *   **Status:** Planning
+    *   **Description:** Establish a Continuous Integration/Continuous Deployment pipeline.
+    *   **Sub-tasks:**
+        *   [ ] Configure code linting (e.g., ESLint) and formatting (e.g., Prettier).
+        *   [ ] Implement unit and integration tests for critical backend logic (especially `server/generateConfig.js`) and API endpoints (using Jest/Supertest).
+        *   [ ] Set up GitHub Actions (or chosen CI tool) for automated linting and testing on pushes/PRs.
+        *   [ ] Define deployment scripts/process (e.g., using PM2, potentially Dockerizing the application) as part of CD.
+
+### Phase 1: Core Feature Enhancements (Est. ~1-2 Months, following Phase 0)
+*   **[ ] Feature: UI/UX Enhancements**
+    *   **Description:** Improve the overall user experience of the rule management interface.
+    *   **Sub-tasks:**
+        *   [ ] Refine the "Save Changes" button logic to accurately reflect unsaved changes.
+        *   [ ] Enhance the rule source editing modal/form with better input validation and clearer layout.
+        *   [ ] Implement Drag-and-Drop reordering for rule sources in the list.
+*   **[ ] Feature: Frontend Management of Proxy Servers (`servers.json`)**
+    *   **Description:** Allow users to add, edit, and delete proxy server entries (currently in `config/servers.json`) directly through the UI.
+    *   **Sub-tasks:**
+        *   [ ] Backend: Ensure `GET /api/servers` and `POST /api/servers` are robust, secure, and correctly handle JSON for UI interaction.
+        *   [ ] Frontend: Design and implement UI components (modals, forms, list display) for CRUD operations on server entries.
+        *   [ ] Frontend: Ensure proper validation and user feedback.
+*   **[ ] Feature F1.2: Local Rule Snippet Management**
+    *   **Description:** Allow users to add and manage custom rule snippets directly through the UI. These snippets will be saved locally on the server (e.g., in a `config/local_rules/` directory, one file per snippet) and can be selectively included in the final configuration.
+    *   **Sub-tasks:**
+        *   [ ] Backend: Design and implement API endpoints for CRUD operations on local rule snippets.
+        *   [ ] Backend: Update `generateConfig.js` to incorporate selected local snippets.
+        *   [ ] Frontend: Develop UI components for creating, viewing, editing, deleting, and toggling local rule snippets.
+*   **[ ] Feature F1.3: Remote Rule Source Versioning (Preliminary)**
+    *   **Description:** Implement a basic mechanism for versioning or caching fetched remote rule sets to allow rollback or comparison. The exact mechanism (e.g., timestamped cache, Git hash if applicable) needs further definition based on user's detailed requirements for "version management of remote rule sets".
+    *   **Sub-tasks:**
+        *   [ ] Define specific requirements and scope for "versioning".
+        *   [ ] Design and implement the chosen caching/versioning strategy.
+
+### Phase 2: Advanced Editing Capabilities (Est. ~2-4 Months, following Phase 1)
+*   **[ ] Feature F2.0: "Advanced Features" Toggle**
+    *   **Description:** Introduce a UI switch to enable/disable the advanced configuration editing mode.
+*   **[ ] Feature F2.1: Integrated Code Editor**
+    *   **Description:** Embed a modern code editor (e.g., Monaco Editor, CodeMirror) into the UI. This editor will allow direct modification of a "quasi" configuration file (excluding sensitive proxy server details from `servers.json` for security).
+*   **[ ] Feature F2.2: Editor Content Local Cache & Server Submission**
+    *   **Description:** Changes made in the integrated editor will be temporarily saved in the user's browser (local storage). A dedicated action will allow submission of these changes to the server.
+*   **[ ] Feature F2.3: Configuration "Slots" with Versioning**
+    *   **Description:** Provide 5 "slots" where users can save distinct versions of their editor-modified configurations. Each slot can have simple version history or overwrite capabilities. Users can quickly switch between these saved configurations.
+*   **[ ] Feature F2.4: Conditional Configuration Generation Logic**
+    *   **Description:** The main "Generate Configuration" button's behavior will adapt:
+        *   **Advanced Mode OFF:** Generates config based on remote/local rules as in Phase 1.
+        *   **Advanced Mode ON:** Generates config using the content from the currently active "slot" (modified by the editor), merged with necessary backend data (like `servers.json`). The button text should change to reflect this (e.g., "Generate Config from Slot X").
+
+### Phase 3: Production Readiness & Operational Excellence (Ongoing / Following Phase 2)
 *   **Documentation:**
-    *   Detailed API documentation.
-    *   Expand "Getting Started" and "Usage" sections in this README.
+    *   [ ] Continuously update and maintain `API.md`.
+    *   [ ] Expand "Getting Started" and "Usage" sections in this README as new features are added and for production deployment.
+*   **Logging:**
+    *   [ ] Implement production-grade logging (e.g., Winston or Pino) with configurable levels, formats (e.g., JSON), and outputs (console, file).
+*   **Process Management & Deployment:**
+    *   [ ] Prepare for production deployment using a process manager like PM2. Document `ecosystem.config.js` setup and deployment commands.
+    *   [ ] Define and document a clear deployment strategy (manual steps initially, with a goal for CI/CD integration for deployment).
+    *   [ ] Consider Dockerizing the application for easier deployment and environment consistency.
+*   **Environment Isolation:**
+    *   [ ] Establish and document practices for environment isolation (development, testing, production), including managing different `.env` configurations or similar mechanisms.
+*   **Data Persistence & Backup:**
+    *   [ ] Review and confirm data persistence strategy for `rule-sources.json`, `servers.json`, local rule snippets, and configuration slots.
+    *   [ ] Document backup procedures for critical configuration data.
+*   **Error Handling & Robustness:**
+    *   [ ] Systematically improve error handling on both frontend and backend.
+    *   [ ] Provide clearer user feedback for all operations and potential issues.
+*   **Testing:**
+    *   [ ] Expand test coverage (unit, integration, E2E if feasible) as the codebase grows.
+*   **Security:**
+    *   [ ] Regularly review security aspects, especially concerning file system access, API authentication, and input validation.
+    *   [ ] Consider rate limiting or other protective measures for public-facing instances if applicable.
 
 
 

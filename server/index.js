@@ -76,7 +76,7 @@ const protectRoute = basicAuth({
 const basicAuthMiddleware = protectRoute;
 
 // --- API Endpoints ---
-app.get('/api/status', (req, res) => {
+app.get('/api/status', basicAuthMiddleware, (req, res) => {
   res.json({ 
     message: 'Server is running',
     githubIntegration: false, // GitHub file commit integration is now removed
@@ -124,14 +124,21 @@ app.get('/api/servers', basicAuthMiddleware, async (req, res) => {
   }
 });
 
-app.post('/api/servers', basicAuthMiddleware, express.text({ type: 'text/plain', limit: '10mb' }), async (req, res) => {
+app.post('/api/servers', basicAuthMiddleware, async (req, res) => { // Expects JSON body now
   try {
-    const serversDataString = req.body; // req.body is now the raw text string
-    if (typeof serversDataString !== 'string' || serversDataString.trim() === '') {
-        return res.status(400).json({ error: 'Invalid data format for servers. Expected non-empty plain text.' });
+    const serversData = req.body;
+    // Basic validation: check if it's an object or array (typical for JSON)
+    if (typeof serversData !== 'object' || serversData === null) {
+        return res.status(400).json({ error: 'Invalid data format for servers. Expected a JSON object or array.' });
     }
-    // Directly write the received string to the file
-    await fs.writeFile(SERVERS_JSON_PATH, serversDataString, 'utf8');
+    try {
+        const newContent = JSON.stringify(serversData, null, 2);
+        await fs.writeFile(SERVERS_JSON_PATH, newContent, 'utf8');
+    } catch (stringifyError) {
+        // This catch is for JSON.stringify errors, though less common for valid objects/arrays
+        console.error('Error stringifying servers data:', stringifyError);
+        return res.status(400).json({ error: 'Invalid server data; could not be stringified.'});
+    }
     
     res.json({ message: 'Servers configuration updated locally.' });
   } catch (error) {
@@ -187,7 +194,8 @@ app.get('/proxy-config', protectRoute, (req, res) => {
   });
 });
 
-app.post('/api/config/save', protectRoute, async (req, res) => {
+// REMOVED: app.post('/api/config/save', protectRoute, async (req, res) => {
+/*
     const { content } = req.body;
     if (typeof content !== 'string') {
         return res.status(400).json({ error: 'Invalid content. Expected a string.' });
@@ -200,6 +208,7 @@ app.post('/api/config/save', protectRoute, async (req, res) => {
         res.status(500).json({ error: 'Failed to save config.yaml.' });
     }
 });
+*/
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));

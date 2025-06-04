@@ -1,2 +1,0 @@
-DOMAIN-SUFFIX,example-test-domain-alpha.com
-DOMAIN-KEYWORD,example-test-keyword-bravo
