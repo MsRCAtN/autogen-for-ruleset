@@ -9,3 +9,4 @@ output/generated_rules.txt
 API.md
 .env
 package-lock.json
+*.snap
