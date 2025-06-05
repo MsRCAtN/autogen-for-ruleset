@@ -177,9 +177,28 @@ app.post('/api/servers',
 
     newServerConfig.id = uuidv4(); // Assign a unique ID
 
-    const newServerJsonLine = JSON.stringify(newServerConfig) + '\n';
-
-    await fs.appendFile(serversPath, newServerJsonLine, 'utf8');
+    // Ensure correct NDJSON formatting when appending
+    let contentToAppend = JSON.stringify(newServerConfig) + '\n'; // New server string always ends with a newline
+    try {
+      const fileStat = await fs.stat(serversPath).catch(() => null); // Check if file exists
+      if (fileStat && fileStat.size > 0) {
+        // File exists and is not empty, check its last character
+        const buffer = Buffer.alloc(1);
+        const fd = await fs.open(serversPath, 'r');
+        await fd.read(buffer, 0, 1, fileStat.size - 1); // Read the last byte
+        await fd.close();
+        if (buffer[0] !== 0x0A) { // 0x0A is ASCII for '\n'
+          // Last character is not a newline, so prepend one to current content
+          contentToAppend = '\n' + contentToAppend;
+        }
+      }
+      // If file doesn't exist, or is empty, contentToAppend is already correctly formatted with its own trailing newline.
+    } catch (e) {
+      // Log error if stat/read fails for unexpected reasons, and proceed cautiously.
+      // It's generally safer to proceed with the append rather than failing the request if stat/read has an issue.
+      console.warn(`Error checking tail of ${path.basename(serversPath)} for newline before append: ${e.message}. Proceeding with default append behavior.`);
+    }
+    await fs.appendFile(serversPath, contentToAppend, 'utf8');
     
     res.status(201).json({ message: 'Server added successfully.', server: newServerConfig });
   } catch (error) {

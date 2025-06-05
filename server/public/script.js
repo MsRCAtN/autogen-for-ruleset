@@ -1,7 +1,10 @@
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('Frontend script loaded.');
     M.AutoInit(); // Initialize all Materialize components
+    await fetchAndRenderProxyServers();
 let editingRuleSourceId = null;
+let addServerModalInstance;
+let editingServerId = null; // For future edit functionality
 
     // Initialize Add Rule Source Modal
     const modalElem = document.getElementById('add-rule-source-modal');
@@ -581,3 +584,166 @@ async function saveRuleSources() {
         M.toast({html: `Error saving: ${error.message}`, classes: 'red'});
     }
 }
+
+// --- Proxy Servers Management ---
+let currentProxyServers = [];
+
+async function fetchAndRenderProxyServers() {
+    const listElement = document.getElementById('proxy-servers-list');
+    if (!listElement) {
+        console.error('Proxy servers list element not found.');
+        return;
+    }
+
+    listElement.innerHTML = '<li class="collection-item center-align"><div class="progress"><div class="indeterminate"></div></div></li>'; // Loading state
+
+    try {
+        const response = await fetch('/api/servers');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+        currentProxyServers = await response.json(); // Assuming API returns an array of servers
+        renderProxyServers(currentProxyServers);
+    } catch (error) {
+        console.error('Failed to fetch proxy servers:', error);
+        listElement.innerHTML = `<li class="collection-item red-text text-darken-2">Error loading servers: ${error.message}</li>`;
+        M.toast({html: `Error fetching servers: ${error.message}`, classes: 'red'});
+    }
+}
+
+function renderProxyServers(servers) {
+    const listElement = document.getElementById('proxy-servers-list');
+    listElement.innerHTML = ''; // Clear current list or loading state
+
+    if (!servers || servers.length === 0) {
+        listElement.innerHTML = '<li class="collection-item">No proxy servers configured.</li>';
+        return;
+    }
+
+    servers.forEach((server, index) => {
+        const item = document.createElement('li');
+        item.className = 'collection-item avatar';
+        // Ensure server.id is handled if it might be undefined/null
+        const serverIdDisplay = server.id ? server.id.substring(0, 8) + '...' : 'N/A';
+        item.innerHTML = `
+            <i class="material-icons circle teal">router</i>
+            <span class="title"><strong>${server.ps || 'Unnamed Server'}</strong></span>
+            <p>
+                Address: ${server.add || 'N/A'}:${server.port || 'N/A'}<br>
+                Type: ${server.type || 'N/A'} | Net: ${server.net || 'N/A'} | ID: ${serverIdDisplay}
+            </p>
+            <div class="secondary-content">
+                <a href="#!" class="edit-server-btn waves-effect waves-light btn-small blue" data-index="${index}" style="margin-right: 10px;"><i class="material-icons">edit</i></a>
+                <a href="#!" class="delete-server-btn waves-effect waves-light btn-small red" data-index="${index}"><i class="material-icons">delete</i></a>
+            </div>
+        `;
+        listElement.appendChild(item);
+    });
+
+    // Add event listeners for edit and delete buttons (placeholder for now)
+    // document.querySelectorAll('.edit-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleEditServer(event, currentProxyServers)));
+    // document.querySelectorAll('.delete-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleDeleteServer(event, currentProxyServers)));
+}
+
+function initializeAddServerModal() {
+    const modalElem = document.getElementById('add-server-modal');
+    if (modalElem) {
+        addServerModalInstance = M.Modal.init(modalElem, {
+            onOpenStart: function() {
+                // Clear form fields when modal opens for adding a new server
+                if (!editingServerId) { // Only clear if not in edit mode
+                    const textarea = document.getElementById('new-server-json');
+                    if (textarea) {
+                        textarea.value = '';
+                    }
+                    M.updateTextFields(); // Important for Materialize labels, including textareas
+                }
+                // If editingServerId is set, pre-filling logic would go here or be called here
+            }
+        });
+    }
+
+    const addServerBtn = document.getElementById('add-server-btn');
+    if (addServerBtn) {
+        addServerBtn.addEventListener('click', () => {
+            editingServerId = null; // Ensure we are in 'add' mode
+            if (addServerModalInstance) {
+                addServerModalInstance.open();
+            }
+        });
+    }
+    // Event listener for the save button inside the modal will be added later
+    const saveNewServerBtn = document.getElementById('save-new-server-btn');
+    if (saveNewServerBtn) {
+        saveNewServerBtn.addEventListener('click', handleSaveNewServer);
+    }
+}
+
+// Placeholder functions for edit/delete - to be implemented
+// function handleEditServer(event, servers) {
+//     const index = event.currentTarget.dataset.index;
+//     console.log('Edit server at index:', index, servers[index]);
+//     M.toast({html: 'Edit functionality to be implemented.'});
+// }
+
+initializeAddServerModal();
+
+async function handleSaveNewServer() {
+    const jsonInput = document.getElementById('new-server-json').value.trim();
+    let newServer;
+
+    if (!jsonInput) {
+        M.toast({html: 'JSON input cannot be empty.', classes: 'red'});
+        return;
+    }
+
+    try {
+        newServer = JSON.parse(jsonInput);
+    } catch (e) {
+        M.toast({html: 'Invalid JSON format. Please check your input.', classes: 'red'});
+        console.error('JSON parsing error:', e);
+        return;
+    }
+
+    // Optional: Basic check if it's an object, though backend will validate structure
+    if (typeof newServer !== 'object' || newServer === null || Array.isArray(newServer)) {
+        M.toast({html: 'Input must be a single JSON object.', classes: 'red'});
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/servers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newServer),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            // If details exist, prefer that, otherwise use the main error message.
+            const errorMessage = errorData.details || errorData.error || `HTTP error! status: ${response.status}`;
+            throw new Error(errorMessage);
+        }
+
+        const savedServer = await response.json();
+        M.toast({html: `Server '${savedServer.ps}' added successfully!`});
+        if (addServerModalInstance) {
+            addServerModalInstance.close();
+        }
+        await fetchAndRenderProxyServers(); // Refresh the list
+
+    } catch (error) {
+        console.error('Failed to save new server:', error);
+        M.toast({html: `Error saving server: ${error.message}`, classes: 'red'});
+    }
+}
+
+// function handleDeleteServer(event, servers) {
+//     const index = event.currentTarget.dataset.index;
+//     console.log('Delete server at index:', index, servers[index]);
+//     M.toast({html: 'Delete functionality to be implemented.'});
+// }
+
