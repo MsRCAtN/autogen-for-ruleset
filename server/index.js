@@ -19,6 +19,7 @@ const { exec: execCallback } = require('child_process');
 const util = require('util');
 const exec = util.promisify(execCallback);
 const { generateConfig } = require('./generateConfig'); // Corrected import name
+const { v4: uuidv4 } = require('uuid');
 
 // Attempt to load libsodium-wrappers for GitHub secret encryption
 let sodium;
@@ -53,10 +54,15 @@ const users = { [ADMIN_USERNAME]: ADMIN_PASSWORD };
 //   );
 // }
 
-const SERVERS_JSON_PATH = path.join(__dirname, '..', 'config', 'servers.json'); 
+// const SERVERS_JSON_PATH = path.join(__dirname, '..', 'config', 'servers.json'); // Replaced by getServersJsonPath() 
 const OUTPUT_CONFIG_PATH = path.join(__dirname, '..', 'output', 'config.yaml');
 // const FRONTEND_PATH = path.join(__dirname, '..', 'frontend'); // Old frontend path, no longer used
 const SERVER_PACKAGE_JSON_PATH = path.join(__dirname, 'package.json');
+
+// Helper function to get the path to servers.json, prioritizing environment variable
+const getServersJsonPath = () => {
+  return process.env.SERVERS_JSON_PATH || path.join(__dirname, '..', 'config', 'servers.json');
+};
 
 // --- Middleware ---
 app.use(express.json({ limit: '50mb' }));
@@ -110,40 +116,187 @@ app.post('/api/rule-sources', basicAuthMiddleware, async (req, res) => {
 });
 
 app.get('/api/servers', basicAuthMiddleware, async (req, res) => {
+  const serversPath = getServersJsonPath();
   try {
-    const data = await fs.readFile(SERVERS_JSON_PATH, 'utf8');
-    res.json(JSON.parse(data));
+    const fileContent = await fs.readFile(serversPath, 'utf8');
+    const lines = fileContent.split('\n');
+    const servers = lines
+      .map(line => line.trim())
+      .filter(line => line)
+      .map(line => {
+        try {
+          return JSON.parse(line);
+        } catch (parseError) {
+          console.warn(`Skipping invalid JSON line in ${serversPath}: ${line.substring(0,100)}...`, parseError.message);
+          return null;
+        }
+      })
+      .filter(server => server !== null);
+    res.json(servers);
   } catch (error) {
     if (error.code === 'ENOENT') {
-      // If file doesn't exist, return an empty array or default structure
-      res.json([]); // Or provide a default structure like { servers: [] }
+      res.json([]); // File not found, return empty array
     } else {
-      console.error('Error reading servers.json:', error);
-      res.status(500).json({ error: 'Failed to read servers configuration file.' });
+      console.error(`Error reading ${serversPath}:`, error);
+      res.status(500).json({ error: `Failed to read servers configuration file from ${serversPath}.` });
     }
   }
 });
 
-app.post('/api/servers', basicAuthMiddleware, async (req, res) => { // Expects JSON body now
+const handleJsonParsingError = (err, req, res, next) => {
+  // Check for common body-parser (used by express.json) parsing error type
+  if (err.type === 'entity.parse.failed' && err instanceof SyntaxError) {
+    console.error(`[JSON Parse Error] ${req.method} ${req.path}: ${err.message}`);
+    return res.status(400).json({
+      error: 'Invalid JSON payload. Parsing failed.', // This is the message our test expects
+      details: err.message,
+      type: err.type
+    });
+  }
+  next(err);
+};
+
+app.post('/api/servers',
+  basicAuthMiddleware,
+  express.json({ strict: false }), // 首先尝试解析 JSON
+  // handleJsonParsingError, // Removed from here, will be registered globally
+  async (req, res) => { // For adding a single server
+  const serversPath = getServersJsonPath();
   try {
-    const serversData = req.body;
-    // Basic validation: check if it's an object or array (typical for JSON)
-    if (typeof serversData !== 'object' || serversData === null) {
-        return res.status(400).json({ error: 'Invalid data format for servers. Expected a JSON object or array.' });
+    const newServerConfig = req.body;
+
+    // Basic validation for the new server object
+    if (typeof newServerConfig !== 'object' || newServerConfig === null) {
+      return res.status(400).json({ error: 'Invalid server data. Expected a JSON object.' });
     }
-    try {
-        const newContent = JSON.stringify(serversData, null, 2);
-        await fs.writeFile(SERVERS_JSON_PATH, newContent, 'utf8');
-    } catch (stringifyError) {
-        // This catch is for JSON.stringify errors, though less common for valid objects/arrays
-        console.error('Error stringifying servers data:', stringifyError);
-        return res.status(400).json({ error: 'Invalid server data; could not be stringified.'});
+    if (!newServerConfig.ps || typeof newServerConfig.ps !== 'string') {
+      // 'ps' (remarks/name) is a common and important field in V2RayN configs
+      return res.status(400).json({ error: "Invalid server data. 'ps' (server name/remark) is required and must be a string." });
     }
+    // Add other V2RayN specific validations if necessary (e.g., address, port)
+
+    newServerConfig.id = uuidv4(); // Assign a unique ID
+
+    const newServerJsonLine = JSON.stringify(newServerConfig) + '\n';
+
+    await fs.appendFile(serversPath, newServerJsonLine, 'utf8');
     
-    res.json({ message: 'Servers configuration updated locally.' });
+    res.status(201).json({ message: 'Server added successfully.', server: newServerConfig });
   } catch (error) {
-    console.error('Error writing servers.json:', error);
-    res.status(500).json({ error: 'Failed to update servers configuration.' });
+    console.error(`Error appending to ${serversPath}:`, error);
+    res.status(500).json({ error: `Failed to add server to ${serversPath}.` });
+  }
+});
+
+app.put('/api/servers/:id', basicAuthMiddleware, express.json({ strict: false }), async (req, res) => {
+  const serversPath = getServersJsonPath();
+  const serverIdToUpdate = req.params.id;
+  const updatedServerConfig = req.body;
+
+  // Basic validation for the updated server object
+  if (typeof updatedServerConfig !== 'object' || updatedServerConfig === null) {
+    return res.status(400).json({ error: 'Invalid server data. Expected a JSON object.' });
+  }
+  if (!updatedServerConfig.ps || typeof updatedServerConfig.ps !== 'string') {
+    return res.status(400).json({ error: "Invalid server data. 'ps' (server name/remark) is required and must be a string." });
+  }
+  // Ensure the ID in the body, if present, matches the ID in the URL, or set it.
+  updatedServerConfig.id = serverIdToUpdate;
+
+  try {
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(serversPath, 'utf8');
+    } catch (readError) {
+      if (readError.code === 'ENOENT') {
+        // File doesn't exist, so the server to update cannot exist.
+        return res.status(404).json({ error: `Server with id '${serverIdToUpdate}' not found.` });
+      }
+      throw readError; // Re-throw other read errors
+    }
+
+    const lines = fileContent.split('\n');
+    let serverFound = false;
+    const updatedLines = lines
+      .map(line => line.trim())
+      .filter(line => line)
+      .map(line => {
+        try {
+          const server = JSON.parse(line);
+          if (server.id === serverIdToUpdate) {
+            serverFound = true;
+            return JSON.stringify(updatedServerConfig); // Replace with updated config
+          }
+          return JSON.stringify(server); // Keep original if no ID match
+        } catch (parseError) {
+          console.warn(`Skipping invalid JSON line during update in ${serversPath}: ${line.substring(0,100)}...`, parseError.message);
+          return null; // Skip malformed lines by not returning them, or return original line if preferred
+        }
+      })
+      .filter(line => line !== null); // Remove lines that failed to parse or were explicitly nulled
+
+    if (!serverFound) {
+      return res.status(404).json({ error: `Server with id '${serverIdToUpdate}' not found.` });
+    }
+
+    // Join with newline, and ensure a trailing newline if there's content
+    const newFileContent = updatedLines.length > 0 ? updatedLines.join('\n') + '\n' : '';
+    await fs.writeFile(serversPath, newFileContent, 'utf8');
+
+    res.json({ message: 'Server updated successfully.', server: updatedServerConfig });
+  } catch (error) {
+    console.error(`Error updating server in ${serversPath}:`, error);
+    res.status(500).json({ error: `Failed to update server in ${serversPath}.` });
+  }
+});
+
+app.delete('/api/servers/:id', basicAuthMiddleware, async (req, res) => {
+  const serversPath = getServersJsonPath();
+  const serverIdToDelete = req.params.id;
+
+  try {
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(serversPath, 'utf8');
+    } catch (readError) {
+      if (readError.code === 'ENOENT') {
+        // File doesn't exist, so the server to delete cannot exist.
+        return res.status(404).json({ error: `Server with id '${serverIdToDelete}' not found.` });
+      }
+      throw readError; // Re-throw other read errors
+    }
+
+    const lines = fileContent.split('\n');
+    let serverFound = false;
+    const remainingLines = lines
+      .map(line => line.trim())
+      .filter(line => line) // Remove empty lines
+      .filter(line => { // Filter out the server to delete
+        try {
+          const server = JSON.parse(line);
+          if (server.id === serverIdToDelete) {
+            serverFound = true;
+            return false; // Exclude this server
+          }
+          return true; // Keep this server
+        } catch (parseError) {
+          console.warn(`Skipping invalid JSON line during delete in ${serversPath}: ${line.substring(0,100)}...`, parseError.message);
+          return true; // Keep malformed lines by default, or decide to filter them by returning false
+        }
+      });
+
+    if (!serverFound) {
+      return res.status(404).json({ error: `Server with id '${serverIdToDelete}' not found.` });
+    }
+
+    // Join with newline, and ensure a trailing newline if there's content
+    const newFileContent = remainingLines.length > 0 ? remainingLines.join('\n') + '\n' : '';
+    await fs.writeFile(serversPath, newFileContent, 'utf8');
+
+    res.json({ message: `Server with id '${serverIdToDelete}' deleted successfully.` });
+  } catch (error) {
+    console.error(`Error deleting server in ${serversPath}:`, error);
+    res.status(500).json({ error: `Failed to delete server in ${serversPath}.` });
   }
 });
 
@@ -228,4 +381,25 @@ if (require.main === module) {
 }
 
 // Export the app instance for testing or other programmatic use
+// module.exports = app; // Comment out if final error handler is below
+
+// Register custom error handlers before the final generic one
+app.use(handleJsonParsingError); // Our custom JSON parsing error handler
+
+// Ensure there's a final, generic error handler for the app
+// This should be placed AFTER all your routes and other middleware
+app.use((err, req, res, next) => {
+  console.error(`[Unhandled Error] ${req.method} ${req.path}:`, err.message, err.stack ? `\n${err.stack}` : '');
+  if (res.headersSent) {
+    // If headers already sent, delegate to the default Express error handler
+    return next(err);
+  }
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
+    type: err.type, // Include type if available from body-parser errors
+    // Optionally, include stack in development
+    // stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
 module.exports = app;

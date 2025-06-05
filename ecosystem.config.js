@@ -13,7 +13,7 @@ module.exports = {
       combine_logs: true, // 是否合并普通日志和错误日志 (如果 out_file 和 error_file 相同)
       env_production: {
         NODE_ENV: 'production',
-        PORT: 3000, // 您可以根据需要修改生产环境的端口
+        // PORT: 3000, // 从 .env 文件读取端口，例如 PORT=3000
         // 重要：请在您的服务器上通过实际的环境变量或 PM2 的方式设置以下敏感信息
         // ADMIN_USERNAME: 'your_prod_admin_username',
         // ADMIN_PASSWORD: 'your_prod_admin_password',

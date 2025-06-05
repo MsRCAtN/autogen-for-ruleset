@@ -16,6 +16,195 @@ describe('API Endpoints', () => {
     expect(response.body).toHaveProperty('adminUser');
   });
 
+describe('CRUD /api/servers', () => {
+  const TEST_SERVERS_JSON_PATH = path.resolve(__dirname, '..', 'config', 'servers.test.api.json');
+  let originalServersJsonPathEnv;
+  const adminUser = process.env.ADMIN_USERNAME || 'admin';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'password';
+
+  beforeEach(async () => {
+    originalServersJsonPathEnv = process.env.SERVERS_JSON_PATH;
+    process.env.SERVERS_JSON_PATH = TEST_SERVERS_JSON_PATH;
+    // Ensure the test file is empty before each test
+    try {
+      await fs.writeFile(TEST_SERVERS_JSON_PATH, '', 'utf8');
+    } catch (err) {
+      // If directory doesn't exist, it's fine, appendFile in POST will create it or fail there
+      if (err.code !== 'ENOENT') throw err;
+    }
+  });
+
+  afterEach(async () => {
+    process.env.SERVERS_JSON_PATH = originalServersJsonPathEnv;
+    try {
+      await fs.unlink(TEST_SERVERS_JSON_PATH);
+    } catch (err) {
+      // Ignore if the file doesn't exist (e.g., if a test failed before creating it)
+      if (err.code !== 'ENOENT') console.error('Error deleting test servers file:', err);
+    }
+  });
+
+  const sampleServer = {
+    v: "2",
+    ps: "test-server-01",
+    add: "127.0.0.1",
+    port: "1080",
+    aid: "0",
+    net: "tcp",
+    type: "none",
+    host: "",
+    path: "",
+    tls: ""
+  };
+
+  it('POST /api/servers - should add a new server successfully', async () => {
+    const response = await request(app)
+      .post('/api/servers')
+      .auth(adminUser, adminPassword)
+      .send(sampleServer);
+    expect(response.statusCode).toBe(201);
+    expect(response.body.message).toBe('Server added successfully.');
+    expect(response.body.server).toHaveProperty('id');
+    expect(response.body.server.ps).toBe(sampleServer.ps);
+
+    // Verify file content
+    const fileContent = await fs.readFile(TEST_SERVERS_JSON_PATH, 'utf8');
+    const lines = fileContent.trim().split('\n');
+    expect(lines.length).toBe(1);
+    const savedServer = JSON.parse(lines[0]);
+    expect(savedServer.id).toBe(response.body.server.id);
+    expect(savedServer.ps).toBe(sampleServer.ps);
+  });
+
+  it('POST /api/servers - should fail if ps is missing', async () => {
+    const { ps, ...serverWithoutPs } = sampleServer;
+    const response = await request(app)
+      .post('/api/servers')
+      .auth(adminUser, adminPassword)
+      .send(serverWithoutPs);
+    expect(response.statusCode).toBe(400);
+    expect(response.body.error).toContain("'ps' (server name/remark) is required");
+  });
+
+  it('POST /api/servers - should fail if request body is not an object', async () => {
+    const trulyInvalidJsonPayload = 'this is { not json'; // This is not a valid JSON structure
+    const response = await request(app)
+      .post('/api/servers')
+      .auth(adminUser, adminPassword)
+      .set('Content-Type', 'application/json')
+      .send(trulyInvalidJsonPayload); // Send the truly invalid JSON string
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toHaveProperty('error');
+    expect(response.body.error).toContain('Invalid JSON payload. Parsing failed.');
+    expect(response.body).toHaveProperty('details'); // Should also have details from the original error
+  });
+
+  it('GET /api/servers - should return an empty array if no servers exist', async () => {
+    const response = await request(app)
+      .get('/api/servers')
+      .auth(adminUser, adminPassword);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
+  it('GET /api/servers - should return servers if they exist', async () => {
+    // First, add a server
+    const postResponse = await request(app)
+      .post('/api/servers')
+      .auth(adminUser, adminPassword)
+      .send(sampleServer);
+    const addedServerId = postResponse.body.server.id;
+
+    const getResponse = await request(app)
+      .get('/api/servers')
+      .auth(adminUser, adminPassword);
+    expect(getResponse.statusCode).toBe(200);
+    expect(Array.isArray(getResponse.body)).toBe(true);
+    expect(getResponse.body.length).toBe(1);
+    expect(getResponse.body[0].id).toBe(addedServerId);
+    expect(getResponse.body[0].ps).toBe(sampleServer.ps);
+  });
+
+  describe('Operations on an existing server', () => {
+    let existingServerId;
+    let initialServerData;
+
+    beforeEach(async () => {
+      // Add a server to operate on
+      const response = await request(app)
+        .post('/api/servers')
+        .auth(adminUser, adminPassword)
+        .send(sampleServer);
+      initialServerData = response.body.server;
+      existingServerId = initialServerData.id;
+    });
+
+    it('PUT /api/servers/:id - should update an existing server successfully', async () => {
+      const updatedServerData = { ...initialServerData, ps: 'updated-server-name', add: '192.168.1.1' };
+      // Remove id from payload as it's in URL, though our backend handles it if present
+      delete updatedServerData.id; 
+
+      const response = await request(app)
+        .put(`/api/servers/${existingServerId}`)
+        .auth(adminUser, adminPassword)
+        .send(updatedServerData);
+      expect(response.statusCode).toBe(200);
+      expect(response.body.message).toBe('Server updated successfully.');
+      expect(response.body.server.id).toBe(existingServerId);
+      expect(response.body.server.ps).toBe('updated-server-name');
+      expect(response.body.server.add).toBe('192.168.1.1');
+
+      // Verify file content
+      const fileContent = await fs.readFile(TEST_SERVERS_JSON_PATH, 'utf8');
+      const lines = fileContent.trim().split('\n');
+      expect(lines.length).toBe(1);
+      const savedServer = JSON.parse(lines[0]);
+      expect(savedServer.id).toBe(existingServerId);
+      expect(savedServer.ps).toBe('updated-server-name');
+    });
+
+    it('PUT /api/servers/:id - should fail to update if ps is missing', async () => {
+      const { ps, ...updatedDataWithoutPs } = { ...initialServerData, add: '192.168.1.100' }; 
+      const response = await request(app)
+        .put(`/api/servers/${existingServerId}`)
+        .auth(adminUser, adminPassword)
+        .send(updatedDataWithoutPs);
+      expect(response.statusCode).toBe(400);
+      expect(response.body.error).toContain("'ps' (server name/remark) is required");
+    });
+
+    it('PUT /api/servers/:id - should return 404 if server ID does not exist', async () => {
+      const nonExistentId = 'non-existent-uuid';
+      const response = await request(app)
+        .put(`/api/servers/${nonExistentId}`)
+        .auth(adminUser, adminPassword)
+        .send({ ...sampleServer, ps: 'updated-ps-for-non-existent' });
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('DELETE /api/servers/:id - should delete an existing server successfully', async () => {
+      const response = await request(app)
+        .delete(`/api/servers/${existingServerId}`)
+        .auth(adminUser, adminPassword);
+      expect(response.statusCode).toBe(200);
+      expect(response.body.message).toBe(`Server with id '${existingServerId}' deleted successfully.`);
+
+      // Verify file content (should be empty or server removed)
+      const fileContent = await fs.readFile(TEST_SERVERS_JSON_PATH, 'utf8');
+      expect(fileContent.trim()).toBe(''); // Or check that the specific server is gone if other servers could exist
+    });
+
+    it('DELETE /api/servers/:id - should return 404 if server ID does not exist', async () => {
+      const nonExistentId = 'non-existent-uuid';
+      const response = await request(app)
+        .delete(`/api/servers/${nonExistentId}`)
+        .auth(adminUser, adminPassword);
+      expect(response.statusCode).toBe(404);
+    });
+  });
+});
+
   it('should return 401 Unauthorized for /api/status without authentication', async () => {
     const response = await request(app).get('/api/status');
     expect(response.statusCode).toBe(401);
