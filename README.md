@@ -2,7 +2,7 @@
 
 ## Overview
 
-A full-stack tool for managing proxy servers and rule sources, then exporting a ready-to-use **Clash Meta** configuration file. Servers are stored in V2RayN JSON format; rule sources pull from Sukka’s public rule sets.
+A full-stack tool for managing proxy servers and rule sources, then exporting a ready-to-use **Clash Meta** configuration file. Servers are stored in JSON format; default rule sources pull from Sukka’s public rule sets.
 
 Future support is planned for other proxy software such as Surge and Sing-box.
 
@@ -10,7 +10,7 @@ Future support is planned for other proxy software such as Surge and Sing-box.
 
 *   Web UI to **add / edit / delete** proxy servers and rule sources, with immediate backend persistence.
 *   Generates Clash Meta-compatible `config.yaml` using a template + fetched rule sources.
-*   REST API (`GET/POST/PUT/DELETE`) for servers, `POST /api/rule-sources`, `POST /api/trigger-generation`, etc. (see `API.md`).
+*   REST API (`GET/POST/PUT/DELETE`) for servers, `POST /api/rule-sources`, `POST /api/trigger-generation`, etc.
 *   Atomic overwrite of `servers.json` when saving full lists; legacy single-append still supported.
 *   Basic Auth protects all management endpoints.
 
