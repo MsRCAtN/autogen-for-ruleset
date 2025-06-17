@@ -714,7 +714,6 @@ async function persistServersToBackend(){
         // If list empty, send empty array; backend should handle, but guard potential 400
         console.warn('Persisting empty server list.');
     }
-    console.log('[persistServersToBackend] Sending list:', cleaned);
     try{
         const resp = await fetch('/api/servers',{
             method:'POST',headers:{'Content-Type':'application/json'},
@@ -723,7 +722,7 @@ async function persistServersToBackend(){
         if(!resp.ok){const err=await resp.json();throw new Error(err.error||`HTTP ${resp.status}`);}        
     }catch(err){
         console.error('Failed to persist servers:',err);
-        M.toast({html:`保存失败: ${err.message}`,classes:'red'});
+        M.toast({html:`Save failed: ${err.message}`,classes:'red'});
     }
 }
 
