@@ -1,43 +1,139 @@
 [
   {
-    "id": "sukka-reject-ads-keywords",
-    "name": "Sukka Ads & Tracking (Keywords from reject.txt)",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/reject.txt",
-    "ruleType": "DOMAIN-KEYWORD",
-    "targetPolicy": "Reject",
-    "enabled": false
-  },
-  {
-    "id": "sukka-reject-ads-domains",
-    "name": "Sukka Ads & Tracking (Domains from reject_domainset.txt)",
+    "id": "sukka-reject-domains",
+    "name": "Sukka Reject Domains (domainset)",
     "url": "https://ruleset.skk.moe/Clash/domainset/reject.txt",
     "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Reject",
-    "enabled": false
+    "enabled": true
   },
   {
-    "id": "sukka-lan-ips",
-    "name": "Sukka LAN IPs",
-    "url": "https://ruleset.skk.moe/Clash/ip/lan.txt",
-    "ruleType": "IP-CIDR",
+    "id": "sukka-cdn-domains",
+    "name": "Sukka Common CDN (domainset)",
+    "url": "https://ruleset.skk.moe/Clash/domainset/cdn.txt",
+    "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Direct",
-    "enabled": false
+    "enabled": true
   },
   {
-    "id": "sukka-china-ips",
-    "name": "Sukka China IPs",
-    "url": "https://ruleset.skk.moe/Clash/ip/china_ip.txt",
-    "ruleType": "IP-CIDR",
+    "id": "sukka-apple-cdn-domains",
+    "name": "Sukka Apple CDN (domainset)",
+    "url": "https://ruleset.skk.moe/Clash/domainset/apple_cdn.txt",
+    "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Direct",
-    "enabled": false
+    "enabled": true
+  },
+  {
+    "id": "sukka-download-domains",
+    "name": "Sukka Download Sites (domainset)",
+    "url": "https://ruleset.skk.moe/Clash/domainset/download.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": true
+  },
+  {
+    "id": "sukka-reject-no-drop",
+    "name": "Sukka Reject (no-drop)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/reject-no-drop.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Reject",
+    "enabled": true
+  },
+  {
+    "id": "sukka-reject-drop",
+    "name": "Sukka Reject (drop)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/reject-drop.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Reject",
+    "enabled": true
+  },
+  {
+    "id": "sukka-reject-keywords",
+    "name": "Sukka Reject (keywords)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/reject.txt",
+    "ruleType": "DOMAIN-KEYWORD",
+    "targetPolicy": "Reject",
+    "enabled": true
+  },
+  {
+    "id": "sukka-cdn-non-ip",
+    "name": "Sukka Common CDN (non-ip)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/cdn.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": true
+  },
+  {
+    "id": "sukka-stream-all",
+    "name": "Sukka Streaming Services (All)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/stream.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": true
+  },
+  {
+    "id": "sukka-ai-services",
+    "name": "Sukka AI Services",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/ai.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": true
+  },
+  {
+    "id": "sukka-telegram-domains",
+    "name": "Sukka Telegram Domains",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/telegram.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": true
+  },
+  {
+    "id": "sukka-apple-services",
+    "name": "Sukka Apple Services",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/apple_services.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": true
   },
   {
     "id": "sukka-apple-cn",
-    "name": "Sukka Apple CN Services",
+    "name": "Sukka Apple CN",
     "url": "https://ruleset.skk.moe/Clash/non_ip/apple_cn.txt",
     "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "PROXY",
-    "enabled": false
+    "targetPolicy": "Direct",
+    "enabled": true
+  },
+  {
+    "id": "sukka-microsoft-cdn",
+    "name": "Sukka Microsoft CDN",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/microsoft_cdn.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": true
+  },
+  {
+    "id": "sukka-microsoft",
+    "name": "Sukka Microsoft Services",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/microsoft.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": true
+  },
+  {
+    "id": "sukka-download-non-ip",
+    "name": "Sukka Download Sites (non-ip)",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/download.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": true
+  },
+  {
+    "id": "sukka-lan-domains",
+    "name": "Sukka LAN Domains",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/lan.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": true
   },
   {
     "id": "sukka-domestic-sites",
@@ -45,102 +141,62 @@
     "url": "https://ruleset.skk.moe/Clash/non_ip/domestic.txt",
     "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Direct",
-    "enabled": false
+    "enabled": true
   },
   {
-    "id": "sukka-streaming-all",
-    "name": "Sukka Streaming Services (All)",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/stream.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "PROXY",
-    "enabled": false
-  },
-  {
-    "id": "sukka-ai-services",
-    "name": "Sukka AI Services",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/ai.txt",
+    "id": "sukka-direct-sites",
+    "name": "Sukka Direct Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/direct.txt",
     "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Direct",
-    "enabled": false
+    "enabled": true
+  },
+  {
+    "id": "sukka-global-sites",
+    "name": "Sukka Global Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/global.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": true
+  },
+  {
+    "id": "sukka-reject-ips",
+    "name": "Sukka Reject IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/reject.txt",
+    "ruleType": "IP-CIDR",
+    "targetPolicy": "Reject",
+    "enabled": true
+  },
+  {
+    "id": "sukka-stream-ips",
+    "name": "Sukka Streaming Services IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/stream.txt",
+    "ruleType": "IP-CIDR",
+    "targetPolicy": "PROXY",
+    "enabled": true
   },
   {
     "id": "sukka-telegram-ips",
     "name": "Sukka Telegram IPs",
     "url": "https://ruleset.skk.moe/Clash/ip/telegram.txt",
     "ruleType": "IP-CIDR",
+    "targetPolicy": "PROXY",
+    "enabled": true
+  },
+  {
+    "id": "sukka-lan-ips",
+    "name": "Sukka LAN IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/lan.txt",
+    "ruleType": "IP-CIDR",
     "targetPolicy": "Direct",
     "enabled": true
   },
   {
-    "id": "sukka-global-sites",
-    "name": "Sukka Global/International Sites",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/global.txt",
-    "ruleType": "DOMAIN-SUFFIX",
+    "id": "sukka-domestic-ips",
+    "name": "Sukka Domestic IPs",
+    "url": "https://ruleset.skk.moe/Clash/ip/domestic.txt",
+    "ruleType": "IP-CIDR",
     "targetPolicy": "Direct",
     "enabled": true
-  },
-  {
-    "id": "sukka-reject-glx",
-    "name": "Sukka Reject GLX",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/reject_glx.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "Reject",
-    "enabled": false
-  },
-  {
-    "id": "sukka-foreign-sites",
-    "name": "Sukka Foreign Sites",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/foreign.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "PROXY",
-    "enabled": false
-  },
-  {
-    "id": "sukka-icloud",
-    "name": "Sukka iCloud Services",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/icloud.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "Direct",
-    "enabled": false
-  },
-  {
-    "id": "sukka-game-sites",
-    "name": "Sukka Game Sites",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/game.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "PROXY",
-    "enabled": false
-  },
-  {
-    "id": "sukka-download-sites",
-    "name": "Sukka Download Sites",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/download.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "PROXY",
-    "enabled": false
-  },
-  {
-    "id": "sukka-speedtest-sites",
-    "name": "Sukka SpeedTest Sites",
-    "url": "https://ruleset.skk.moe/Clash/non_ip/speedtest.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "Direct",
-    "enabled": false
-  },
-  {
-    "id": "sukka-hijacking-domains",
-    "name": "Sukka Hijacking Domains",
-    "url": "https://ruleset.skk.moe/Clash/domainset/hijacking.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "Reject",
-    "enabled": false
-  },
-  {
-    "id": "sukka-reject-cn-domains",
-    "name": "Sukka Reject CN Domains",
-    "url": "https://ruleset.skk.moe/Clash/domainset/reject_cn.txt",
-    "ruleType": "DOMAIN-SUFFIX",
-    "targetPolicy": "Reject",
-    "enabled": false
   }
 ]
