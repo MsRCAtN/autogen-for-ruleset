@@ -195,6 +195,7 @@ rules:
   - DOMAIN-SUFFIX,godoc.org,Direct
   - DOMAIN-SUFFIX,500px.org,Direct
   - DOMAIN-SUFFIX,4chan.org,Direct
+  - DOMAIN-SUFFIX,kali.org,Direct
   - DOMAIN-SUFFIX,ietf.org,Direct
   - DOMAIN-SUFFIX,iana.org,Direct
   - DOMAIN-SUFFIX,4cdn.org,Direct
@@ -263,6 +264,7 @@ rules:
   - DOMAIN-SUFFIX,apkpure.net,Direct
   - DOMAIN-SUFFIX,yandex.net,Direct
   - DOMAIN-SUFFIX,sc-cdn.net,Direct
+  - DOMAIN-SUFFIX,osmand.net,Direct
   - DOMAIN-SUFFIX,nitter.net,Direct
   - DOMAIN-SUFFIX,ipleak.net,Direct
   - DOMAIN-SUFFIX,fastly.net,Direct
@@ -306,6 +308,7 @@ rules:
   - DOMAIN-SUFFIX,privateinternetaccess.com,Direct
   - DOMAIN-SUFFIX,returnyoutubedislike.com,Direct
   - DOMAIN-SUFFIX,hubspotlinksstarter.com,Direct
+  - DOMAIN-SUFFIX,precisionhydration.com,Direct
   - DOMAIN-SUFFIX,lineshoppingseller.com,Direct
   - DOMAIN-SUFFIX,minecraftservices.com,Direct
   - DOMAIN-SUFFIX,githubusercontent.com,Direct
