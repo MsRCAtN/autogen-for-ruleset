@@ -8,8 +8,8 @@ module.exports = {
       watch: false, // Disable file watching in production
       max_memory_restart: '1G', // Restart if memory exceeds 1G
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z', // Log date format
-      error_file: '/var/log/clash-config-server/error.log', // 错误日志路径
-      out_file: '/var/log/clash-config-server/out.log', // 普通输出日志路径
+      error_file: './logs/error.log', // Error log path
+      out_file: './logs/out.log', // Output log path
       combine_logs: true, // Combine stdout and stderr if paths are identical
       env_production: {
         NODE_ENV: 'production',
