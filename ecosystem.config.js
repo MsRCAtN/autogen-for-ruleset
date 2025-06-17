@@ -13,12 +13,9 @@ module.exports = {
       combine_logs: true, // Combine stdout and stderr if paths are identical
       env_production: {
         NODE_ENV: 'production',
-        // PORT: 3000, // Read from .env or environment
-        // IMPORTANT: set sensitive credentials via environment variables or PM2
+        PORT: 3000,
         // ADMIN_USERNAME: 'your_prod_admin_username',
         // ADMIN_PASSWORD: 'your_prod_admin_password',
-        // PM2 will automatically inherit existing environment variables.
-        // You may also pass them via PM2 CLI; avoid hard-coding secrets.
       },
     },
   ],
