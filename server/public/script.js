@@ -2,6 +2,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('Frontend script loaded.');
     M.AutoInit(); // Initialize all Materialize components
     await fetchAndRenderProxyServers();
+    // Initialize Add Server modal (needed for edit/add actions)
+    initializeAddServerModal();
 let editingRuleSourceId = null;
 let addServerModalInstance;
 let editingServerId = null; // For future edit functionality
@@ -121,7 +123,7 @@ let editingServerId = null; // For future edit functionality
                 currentRuleSources.splice(index, 1);
                 renderRuleSources(currentRuleSources);
                 document.getElementById('save-rule-sources').classList.remove('disabled');
-                 M.toast({html: `Rule source '${sourceToDelete.name}' removed locally. Save changes to persist.`, classes: 'orange'});
+
             } else if (targetButton.classList.contains('undo-delete-btn')) {
                 // Undo delete click: unmark
                 const source = currentRuleSources[index];
@@ -129,7 +131,6 @@ let editingServerId = null; // For future edit functionality
                 console.log('[Undo Delete Btn Click] Source after unmark:', JSON.parse(JSON.stringify(source)));
                 renderRuleSources(currentRuleSources);
                 updateMainSaveButtonState(); 
-                M.toast({html: `Deletion of '${source.name || source.id}' undone.`, classes: 'grey'});
             }
         });
     }
@@ -538,7 +539,7 @@ function handleDeleteRuleSource(index) {
     console.log('Removed rule source:', removedSource.name || removedSource.id);
     renderRuleSources(currentRuleSources); // Re-render the list
     document.getElementById('save-rule-sources').classList.remove('disabled'); // Enable save button
-    M.toast({html: `Rule source '${removedSource.name || removedSource.id}' removed. Save changes to apply.`, displayLength: 3000});
+
 }
 
 function handleRuleSourceChange() {
@@ -626,6 +627,20 @@ function renderProxyServers(servers) {
         item.className = 'collection-item avatar';
         // Ensure server.id is handled if it might be undefined/null
         const serverIdDisplay = server.id ? server.id.substring(0, 8) + '...' : 'N/A';
+        // Determine action buttons based on deletion state
+        let actionButtonsHtml;
+        if (server.isPendingDeletion) {
+            actionButtonsHtml = `
+                <a href="#" class="confirm-delete-server-btn waves-effect waves-light btn-small orange" data-index="${index}" style="margin-right: 10px;"><i class="material-icons">check</i></a>
+                <a href="#" class="undo-delete-server-btn waves-effect waves-light btn-small grey" data-index="${index}"><i class="material-icons">undo</i></a>
+            `;
+            item.classList.add('pending-deletion');
+        } else {
+            actionButtonsHtml = `
+                <a href="#" class="edit-server-btn waves-effect waves-light btn-small blue" data-index="${index}" style="margin-right: 10px;"><i class="material-icons">edit</i></a>
+                <a href="#" class="delete-server-btn waves-effect waves-light btn-small red" data-index="${index}"><i class="material-icons">delete</i></a>
+            `;
+        }
         item.innerHTML = `
             <i class="material-icons circle teal">router</i>
             <span class="title"><strong>${server.ps || 'Unnamed Server'}</strong></span>
@@ -634,16 +649,82 @@ function renderProxyServers(servers) {
                 Type: ${server.type || 'N/A'} | Net: ${server.net || 'N/A'} | ID: ${serverIdDisplay}
             </p>
             <div class="secondary-content">
-                <a href="#!" class="edit-server-btn waves-effect waves-light btn-small blue" data-index="${index}" style="margin-right: 10px;"><i class="material-icons">edit</i></a>
-                <a href="#!" class="delete-server-btn waves-effect waves-light btn-small red" data-index="${index}"><i class="material-icons">delete</i></a>
+                ${actionButtonsHtml}
             </div>
         `;
         listElement.appendChild(item);
     });
 
-    // Add event listeners for edit and delete buttons (placeholder for now)
-    // document.querySelectorAll('.edit-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleEditServer(event, currentProxyServers)));
-    // document.querySelectorAll('.delete-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleDeleteServer(event, currentProxyServers)));
+    // Add event listeners for edit and delete buttons
+    document.querySelectorAll('.edit-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleEditServer(event, currentProxyServers)));
+    document.querySelectorAll('.delete-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleDeleteServer(event, currentProxyServers)));
+    document.querySelectorAll('.confirm-delete-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleConfirmDeleteServer(event, currentProxyServers)));
+    document.querySelectorAll('.undo-delete-server-btn').forEach(btn => btn.addEventListener('click', (event) => handleUndoDeleteServer(event, currentProxyServers)));
+}
+
+function handleEditServer(event, servers) {
+    const index = event.currentTarget.dataset.index;
+    const server = servers[index];
+    if (!server) return;
+    editingServerId = server.id;
+    // Pre-fill textarea
+    const textarea = document.getElementById('new-server-json');
+    if (textarea) {
+        textarea.value = JSON.stringify(server, null, 2);
+        M.updateTextFields();
+    }
+    // Open modal
+    if (addServerModalInstance) {
+        addServerModalInstance.open();
+    }
+}
+
+function handleDeleteServer(event, servers) {
+    const index = event.currentTarget.dataset.index;
+    const server = servers[index];
+    if (!server) return;
+    server.isPendingDeletion = true;
+    renderProxyServers(currentProxyServers);
+}
+
+async function handleConfirmDeleteServer(event, servers) {
+    const index = event.currentTarget.dataset.index;
+    const server = servers[index];
+    if (!server) return;
+    servers.splice(index,1);
+    renderProxyServers(currentProxyServers);
+    await persistServersToBackend();
+    M.toast({html:`Server '${server.ps}' deleted and saved.`,classes:'teal'});
+}
+
+function handleUndoDeleteServer(event, servers) {
+    const index = event.currentTarget.dataset.index;
+    const server = servers[index];
+    if (!server) return;
+    delete server.isPendingDeletion;
+    renderProxyServers(currentProxyServers);
+}
+
+// Persist full servers list to backend (overwrites servers.json)
+async function persistServersToBackend(){
+    const cleaned = currentProxyServers
+        .filter(s=> typeof s.ps==='string' && s.ps.trim().length>0)
+        .map(s=>{const copy={...s}; delete copy.isPendingDeletion; return copy;});
+    if(cleaned.length===0){
+        // If list empty, send empty array; backend should handle, but guard potential 400
+        console.warn('Persisting empty server list.');
+    }
+    console.log('[persistServersToBackend] Sending list:', cleaned);
+    try{
+        const resp = await fetch('/api/servers',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(cleaned)
+        });
+        if(!resp.ok){const err=await resp.json();throw new Error(err.error||`HTTP ${resp.status}`);}        
+    }catch(err){
+        console.error('Failed to persist servers:',err);
+        M.toast({html:`保存失败: ${err.message}`,classes:'red'});
+    }
 }
 
 function initializeAddServerModal() {
@@ -680,14 +761,7 @@ function initializeAddServerModal() {
     }
 }
 
-// Placeholder functions for edit/delete - to be implemented
-// function handleEditServer(event, servers) {
-//     const index = event.currentTarget.dataset.index;
-//     console.log('Edit server at index:', index, servers[index]);
-//     M.toast({html: 'Edit functionality to be implemented.'});
-// }
 
-initializeAddServerModal();
 
 async function handleSaveNewServer() {
     const jsonInput = document.getElementById('new-server-json').value.trim();
@@ -713,8 +787,11 @@ async function handleSaveNewServer() {
     }
 
     try {
-        const response = await fetch('/api/servers', {
-            method: 'POST',
+        const isEdit = Boolean(editingServerId);
+        const endpoint = isEdit ? `/api/servers/${editingServerId}` : '/api/servers';
+        const httpMethod = isEdit ? 'PUT' : 'POST';
+        const response = await fetch(endpoint, {
+            method: httpMethod,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -729,11 +806,13 @@ async function handleSaveNewServer() {
         }
 
         const savedServer = await response.json();
-        M.toast({html: `Server '${savedServer.ps}' added successfully!`});
+        const toastMsg = isEdit ? `Server '${savedServer.ps}' updated!` : `Server '${savedServer.ps}' added!`;
+        M.toast({html: toastMsg});
         if (addServerModalInstance) {
             addServerModalInstance.close();
         }
-        await fetchAndRenderProxyServers(); // Refresh the list
+        editingServerId=null;
+        await fetchAndRenderProxyServers();
 
     } catch (error) {
         console.error('Failed to save new server:', error);

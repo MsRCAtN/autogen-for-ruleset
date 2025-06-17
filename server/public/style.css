@@ -38,3 +38,10 @@ main {
 #rule-sources-container .switch label input[type=checkbox]:checked+.lever:after {
     background-color: #00796b; /* teal darken-2 */
 }
+
+/* Make the JSON textarea in Add Server modal taller by default */
+#add-server-modal textarea#new-server-json {
+    min-height: 288px;
+    height: 288px;
+    overflow-y: auto;
+}

@@ -163,17 +163,48 @@ app.post('/api/servers',
   async (req, res) => { // For adding a single server
   const serversPath = getServersJsonPath();
   try {
-    const newServerConfig = req.body;
+    const payload = req.body;
 
-    // Basic validation for the new server object
+    // ----------------------------
+    // Case 1: overwrite full list
+    // ----------------------------
+    if (Array.isArray(payload)) {
+      // Validate every server object
+      for (const srv of payload) {
+        if (typeof srv !== 'object' || srv === null) {
+          return res.status(400).json({ error: 'Invalid server list. Each item must be an object.' });
+        }
+        if (!srv.ps || typeof srv.ps !== 'string') {
+          return res.status(400).json({ error: "Invalid server data. 'ps' (server name/remark) is required and must be a string for every server." });
+        }
+        // Ensure each server has an id
+        if (!srv.id) {
+          srv.id = uuidv4();
+        }
+      }
+
+      // Convert to NDJSON string (each JSON on its own line)
+      const ndjson = payload.map(srv => JSON.stringify(srv)).join('\n') + '\n';
+
+      // Atomic write using temp file then rename
+      const tmpPath = serversPath + '.tmp';
+      await fs.writeFile(tmpPath, ndjson, 'utf8');
+      await fs.rename(tmpPath, serversPath);
+
+      return res.json({ message: 'Server list overwritten successfully.', count: payload.length });
+    }
+
+    // ---------------------------
+    // Case 2: single server append (legacy)
+    // ---------------------------
+    const newServerConfig = payload;
+
     if (typeof newServerConfig !== 'object' || newServerConfig === null) {
       return res.status(400).json({ error: 'Invalid server data. Expected a JSON object.' });
     }
     if (!newServerConfig.ps || typeof newServerConfig.ps !== 'string') {
-      // 'ps' (remarks/name) is a common and important field in V2RayN configs
       return res.status(400).json({ error: "Invalid server data. 'ps' (server name/remark) is required and must be a string." });
     }
-    // Add other V2RayN specific validations if necessary (e.g., address, port)
 
     newServerConfig.id = uuidv4(); // Assign a unique ID
 
