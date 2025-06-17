@@ -78,5 +78,69 @@
     "ruleType": "DOMAIN-SUFFIX",
     "targetPolicy": "Direct",
     "enabled": true
+  },
+  {
+    "id": "sukka-reject-glx",
+    "name": "Sukka Reject GLX",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/reject_glx.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Reject",
+    "enabled": false
+  },
+  {
+    "id": "sukka-foreign-sites",
+    "name": "Sukka Foreign Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/foreign.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": false
+  },
+  {
+    "id": "sukka-icloud",
+    "name": "Sukka iCloud Services",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/icloud.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-game-sites",
+    "name": "Sukka Game Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/game.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": false
+  },
+  {
+    "id": "sukka-download-sites",
+    "name": "Sukka Download Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/download.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "PROXY",
+    "enabled": false
+  },
+  {
+    "id": "sukka-speedtest-sites",
+    "name": "Sukka SpeedTest Sites",
+    "url": "https://ruleset.skk.moe/Clash/non_ip/speedtest.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Direct",
+    "enabled": false
+  },
+  {
+    "id": "sukka-hijacking-domains",
+    "name": "Sukka Hijacking Domains",
+    "url": "https://ruleset.skk.moe/Clash/domainset/hijacking.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Reject",
+    "enabled": false
+  },
+  {
+    "id": "sukka-reject-cn-domains",
+    "name": "Sukka Reject CN Domains",
+    "url": "https://ruleset.skk.moe/Clash/domainset/reject_cn.txt",
+    "ruleType": "DOMAIN-SUFFIX",
+    "targetPolicy": "Reject",
+    "enabled": false
   }
 ]
