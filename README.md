@@ -2,17 +2,17 @@
 
 ## Overview
 
-A server application to generate proxy configuration files. It uses V2RayN-compatible format for server definitions and currently produces configurations compatible with Clash Meta.
+A full-stack tool for managing proxy servers and rule sources, then exporting a ready-to-use **Clash Meta** configuration file. Servers are stored in V2RayN JSON format; rule sources pull from Sukka’s public rule sets.
 
 Future support is planned for other proxy software such as Surge and Sing-box.
 
 ## Core Functionality
 
-*   Manages proxy server definitions (V2RayN format).
-*   Manages rule sources for generating proxy rules.
-*   Generates Clash Meta compatible configuration files.
-*   Provides API endpoints for management and configuration download.
-*   Basic Authentication for API protection.
+*   Web UI to **add / edit / delete** proxy servers and rule sources, with immediate backend persistence.
+*   Generates Clash Meta-compatible `config.yaml` using a template + fetched rule sources.
+*   REST API (`GET/POST/PUT/DELETE`) for servers, `POST /api/rule-sources`, `POST /api/trigger-generation`, etc. (see `API.md`).
+*   Atomic overwrite of `servers.json` when saving full lists; legacy single-append still supported.
+*   Basic Auth protects all management endpoints.
 
 ## Getting Started
 
@@ -31,14 +31,16 @@ Future support is planned for other proxy software such as Surge and Sing-box.
 
 ## Usage
 
-*   Access API endpoints (e.g., `/proxy-config` to download, other endpoints for management as per `API.md`).
-*   (Optional) Use the provided basic web UI for managing rule sources if deployed and accessible.
+*   Navigate to `/` with your browser, log in with the admin credentials, and manage proxies / rule sources via the Materialize UI.
+*   Trigger config generation from the UI or call `POST /api/trigger-generation`.
+*   Download the generated configuration at `/proxy-config`.
+*   Full API details are documented in `API.md`; curl or automation friendly.
 
-## Future Plans
+## Roadmap
 
-*   Expand configuration output support to include Surge, Sing-box, and other popular proxy tools.
-*   Develop API endpoints for managing server definitions (`servers.json`).
-*   Enhance UI for more comprehensive management.
+*   Add output generators for Surge, Sing-box, etc.
+*   OAuth option in addition to Basic Auth.
+*   Live log panel in UI for config generation progress.
 
 ## Acknowledgements
 
